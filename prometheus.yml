@@ -11,6 +11,8 @@ scrape_configs:
     # scheme defaults to 'http'.
 
     static_configs:
-      - targets: ["172.17.0.1:2112"]
+      - targets: ["127.0.0.1:2112/metrics"]
 
-
+#  - job_name: 'node_exporter'
+#    static_configs:
+#      - targets: ['host.docker.internal:9100']

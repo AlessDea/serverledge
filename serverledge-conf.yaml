@@ -1,0 +1,4 @@
+container.pool.memory: 4096
+etcd.address: "127.0.0.1:2379"
+scheduler.queue.capacity: 0
+metrics.enabled: true
