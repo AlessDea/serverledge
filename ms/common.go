@@ -1,14 +1,15 @@
-package main
+package ms
 
 type NodeState string // State of the node
 type MSState string   // State of the monitoryng system
 
-var startScriptPath string = "../scripts/exporters_controller/start_exporter.sh"
-var stopScriptPath string = "../scripts/exporters_controller/start_exporter.sh"
-var pauseScriptPath string = "../scripts/exporters_controller/pause_exporter.sh"
-var unpauseScriptPath string = "../scripts/exporters_controller/unpause_exporter.sh"
+var startScriptPath string = "../../scripts/exporters_controller/start_exporter.sh"
+var stopScriptPath string = "../../scripts/exporters_controller/start_exporter.sh"
+var pauseScriptPath string = "../../scripts/exporters_controller/pause_exporter.sh"
+var unpauseScriptPath string = "../../scripts/exporters_controller/unpause_exporter.sh"
 
-var policyConfigPath string = "policy_config.py"
+var thresholdsConfigPath string = "../../ms/thresholds_config.yml"
+var policyConfigPath string = "../../ms/policy_config.yml"
 
 var state MSState = MsFullPerf // state of the MS
 var prevState MSState = ""
@@ -16,17 +17,25 @@ var nodeState NodeState = StateNormal // state of the node
 
 type ExporterState string
 
+type CommandType string
+
 const (
 	NodeExporter    string = "node-exporter"
 	ProcessExporter string = "process-exporter"
 	OtelCollector   string = "otel-collector"
-	Prometheus      string = "prometheus"
+	Prometheus      string = "prom"
 )
 
 const (
 	running ExporterState = "running"
 	paused  ExporterState = "paused"
 	stopped ExporterState = "stopped"
+)
+
+const (
+	run   CommandType = "run"
+	stop  CommandType = "stop"
+	pause CommandType = "pause"
 )
 
 func isRunning(state ExporterState) bool {
@@ -59,35 +68,53 @@ const (
 
 const (
 	MsFullPerf    MSState = "FullPerformance"
-	MsPartialPerf MSState = "PArtialPerformance"
+	MsPartialPerf MSState = "PartialPerformance"
 	MsIdle        MSState = "Idle"
 	MsDisabled    MSState = "Disabled"
 )
 
-type Policy struct {
-	Exporters []Exporter `yaml:"exporters"`
+// Thresholds defines the structure for the YAML configuration
+type Thresholds struct {
+	Degraded State `yaml:"Degraded"`
+	Critical State `yaml:"Critical"`
+	Inactive State `yaml:"Inactive"`
 }
 
-type Exporter struct {
-	Name            string        `yaml:"name"`
-	StartConditions Conditions    `yaml:"start_conditions"`
-	StopConditions  Conditions    `yaml:"stop_conditions"`
-	IdleConditions  IdleCondition `yaml:"idle_conditions"`
+// State defines the thresholds for node and monitoring system
+type State struct {
+	Node             ResourceThreshold `yaml:"node"`
+	MonitoringSystem ResourceThreshold `yaml:"monitoring_system"`
 }
 
-type Conditions struct {
-	CPUUsageBelow float64 `yaml:"cpu_usage_below"`
-	RAMUsageBelow float64 `yaml:"ram_usage_below"`
-	CPUUsageAbove float64 `yaml:"cpu_usage_above"`
-	RAMUsageAbove float64 `yaml:"ram_usage_above"`
+// ResourceThreshold defines CPU and RAM thresholds
+type ResourceThreshold struct {
+	CPU float64 `yaml:"cpu"`
+	RAM float64 `yaml:"ram"`
 }
 
-type IdleCondition struct {
-	IdleDurationSeconds int `yaml:"idle_duration_seconds"`
+// Config defines the structure for the YAML configuration for the mapping State, Actions
+type Config struct {
+	Idle               Actions `yaml:"Idle"`
+	Disabled           Actions `yaml:"Disabled"`
+	PartialPerformance Actions `yaml:"PartialPerformance"`
+	FullPerformance    Actions `yaml:"FullPerformance"`
+}
+
+// Actions defines the actions (run/stop/pause) for each process in a specific performance state
+type Actions struct {
+	NodeExporter    CommandType `yaml:"node-exporter"`
+	ProcessExporter CommandType `yaml:"process-exporter"`
+	OtelCollector   CommandType `yaml:"otel-collector"`
+	Prometheus      CommandType `yaml:"prometheus"`
 }
 
 var exportersState = make(map[string]ExporterState)
 
-var policy Policy
+var thresholds Thresholds
+var config Config
 
 var defaultPolicy bool = true
+
+func between(x float64, e1 float64, e2 float64) bool {
+	return (x >= e1 && x < e2)
+}

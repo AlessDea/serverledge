@@ -1,6 +1,6 @@
 BIN=bin
 
-all: serverledge executor serverledge-cli lb
+all: serverledge executor serverledge-cli lb monitoring_system
 
 serverledge:
 	CGO_ENABLED=0 GOOS=linux go build -o $(BIN)/$@ cmd/$@/main.go
@@ -13,6 +13,10 @@ serverledge-cli:
 
 executor:
 	CGO_ENABLED=0 GOOS=linux go build -o $(BIN)/$@ cmd/$@/executor.go
+
+monitoring_system:
+	CGO_ENABLED=0 GOOS=linux go build -o $(BIN)/$@ cmd/$@/main.go
+
 
 DOCKERHUB_USER=grussorusso
 images:  image-python310 image-nodejs17ng image-base

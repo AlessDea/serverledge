@@ -1,4 +1,4 @@
-package main
+package ms
 
 // metrics are collected and exported by servergledge itself
 // while this component is the orchestrator of the Monitorying System,
@@ -54,11 +54,9 @@ func startExporter(args ...string) error {
 		log.Printf("Error running script %s: %v", startScriptPath, err)
 		return err
 	}
-	log.Printf("Successfully ran script: %s", startScriptPath)
+	log.Printf("Successfully ran container %s", args[len(args)-1])
 
-	exportersState[NodeExporter] = running
-	exportersState[ProcessExporter] = running
-	exportersState[OtelCollector] = running
+	exportersState[args[len(args)-1]] = running
 
 	return nil
 }
@@ -72,11 +70,9 @@ func stopExporter(args ...string) error {
 		log.Printf("Error stopping container: %v", err)
 		return err
 	}
-	log.Printf("Successfully stopped container")
+	log.Printf("Successfully stopped container %s", args[len(args)-1])
 
-	exportersState[NodeExporter] = stopped
-	exportersState[ProcessExporter] = stopped
-	exportersState[OtelCollector] = stopped
+	exportersState[args[len(args)-1]] = stopped
 
 	return nil
 }
@@ -90,11 +86,9 @@ func pauseExporter(args ...string) error {
 		log.Printf("Error pausing container: %v", err)
 		return err
 	}
-	log.Printf("Successfully paused container")
+	log.Printf("Successfully paused container %s", args[len(args)-1])
 
-	exportersState[NodeExporter] = paused
-	exportersState[ProcessExporter] = paused
-	exportersState[OtelCollector] = paused
+	exportersState[args[len(args)-1]] = paused
 
 	return nil
 }
@@ -108,51 +102,11 @@ func unpauseExporter(args ...string) error {
 		log.Printf("Error unpausing container: %v", err)
 		return err
 	}
-	log.Printf("Successfully unpaused container")
+	log.Printf("Successfully unpaused container %s", args[len(args)-1])
 
-	exportersState[NodeExporter] = running
-	exportersState[ProcessExporter] = running
-	exportersState[OtelCollector] = running
+	exportersState[args[len(args)-1]] = running
 
 	return nil
-}
-
-func change_state() {
-	switch state {
-	case MsFullPerf:
-		// run all
-		log.Println("Node in Full Performance State")
-		if prevState == MsIdle {
-			_ = unpauseExporter(ProcessExporter)
-			_ = unpauseExporter(NodeExporter)
-			_ = unpauseExporter(OtelCollector)
-			_ = unpauseExporter(Prometheus)
-		}
-		_ = startExporter(NodeExporter, ProcessExporter, OtelCollector, Prometheus)
-
-	case MsPartialPerf:
-		// for now stop Process and Otel
-		log.Println("Node in Partial Performance State")
-		_ = stopExporter(ProcessExporter)
-		_ = stopExporter(OtelCollector)
-		_ = startExporter(NodeExporter, Prometheus)
-
-	case MsDisabled:
-		// stop All
-		log.Println("Node in Disabled State")
-		_ = stopExporter(ProcessExporter)
-		_ = stopExporter(NodeExporter)
-		_ = stopExporter(OtelCollector)
-		_ = stopExporter(Prometheus)
-
-	case MsIdle:
-		// stop export the metrics but for now stop all the services except prometheus
-		log.Println("Node in Idle State")
-		_ = pauseExporter(ProcessExporter)
-		_ = pauseExporter(NodeExporter)
-		_ = pauseExporter(OtelCollector)
-		_ = pauseExporter(Prometheus)
-	}
 }
 
 // fetchMetric fetches a specific metric from an exporter endpoint
@@ -211,23 +165,30 @@ func calculateCPUUsage(URL string) (float64, error) {
 // calculateProcessCPU calculates the CPU usage of a specific process
 func calculateProcessCPU(URL string) (float64, error) {
 	// Fetch process CPU time
-	processCPU, err := fetchMetric(URL, `namedprocess_namegroup_cpu_seconds_total{name="serverledge"}`)
-	if err != nil {
-		return 0, err
+	proc_total := 0.0
+	states := []string{"user", "system"}
+	for _, state := range states {
+		processCPU, err := fetchMetric(URL, fmt.Sprintf(`namedprocess_namegroup_cpu_seconds_total{mode="%s"}`, state))
+		if err == nil {
+			proc_total += processCPU
+		}
 	}
 
-	// Fetch total CPU time
-	totalCPU, err := fetchMetric(URL, `namedprocess_namegroup_cpu_seconds_total`)
-	if err != nil {
-		return 0, err
+	// Fetch total CPU time (sum of all states)
+	total := 0.0
+	states = []string{"user", "system", "nice", "iowait", "irq", "softirq", "steal", "idle"}
+	for _, state := range states {
+		val, err := fetchMetric(URL, fmt.Sprintf(`node_cpu_seconds_total{mode="%s"}`, state))
+		if err == nil {
+			total += val
+		}
 	}
 
-	// Calculate process CPU usage percentage
-	if totalCPU == 0 {
+	if total == 0 {
 		return 0, fmt.Errorf("total CPU time is zero")
 	}
 
-	processCPUUsage := (processCPU / totalCPU) * 100
+	processCPUUsage := (proc_total / total) * 100
 	return processCPUUsage, nil
 }
 
@@ -253,7 +214,7 @@ func calculateRAMUsage(URL string) (float64, error) {
 
 // calculateProcessRAM calculates the RAM usage of a specific process
 func calculateProcessRAM(URL string) (float64, error) {
-	processMemory, err := fetchMetric(URL, `namedprocess_namegroup_memory_bytes{name="your_process_name"}`)
+	processMemory, err := fetchMetric(URL, `namedprocess_namegroup_memory_bytes`)
 	if err != nil {
 		return 0, err
 	}
@@ -272,7 +233,7 @@ func calculateProcessRAM(URL string) (float64, error) {
 }
 
 func analyzer() {
-	url := "http://localhost:2112/metrics"
+	url := "http://localhost:2112/metrics" // read metrics from
 	for {
 		// Calculate CPU and RAM usage for the node
 		nodeCPUUsage, err := calculateCPUUsage(url)
@@ -304,36 +265,41 @@ func analyzer() {
 			fmt.Printf("Process RAM Usage: %.2f%%\n", processRAMUsage)
 		}
 
+		check_change_state(nodeCPUUsage, nodeRAMUsage)
+
 		// Wait before next iteration
+		log.Printf("Waiting")
 		time.Sleep(10 * time.Second)
-
-		// check if change status has to be performed
-		if defaultPolicy {
-			checkDefaultPolicy(nodeCPUUsage, nodeRAMUsage)
-		} else {
-			checkCustomPolicy(nodeCPUUsage, nodeRAMUsage)
-		}
-
-		// in realtà bisogna implementare le policy
 	}
 }
 
-func main() {
+func Init() {
 
-	// load change state policy
-	err := loadPolicyConfig(policyConfigPath)
+	// load thresholds
+	log.Println("PORCODIO")
+	err := loadThresholdsConfig(thresholdsConfigPath)
 	if err != nil {
-		fmt.Printf("Error loading policy: %v\n", err)
-	} else {
-		defaultPolicy = false
+		fmt.Printf("Error loading thresholds: %v\n", err)
 	}
+	log.Println("loaded thresholds\n")
+
+	// load change state policy actions
+	err = loadActionsConfig(policyConfigPath)
+	if err != nil {
+		fmt.Printf("Error loading thresholds: %v\n", err)
+	}
+	log.Println("loaded thresholds\n")
+
+	printStructures(config, thresholds)
 
 	// start in a Full Performance state
 	log.Println("Node in Normal state, run exporters:")
-	_ = startExporter(NodeExporter, ProcessExporter, OtelCollector, Prometheus)
-
+	_ = startExporter(NodeExporter)
+	_ = startExporter(ProcessExporter)
+	_ = startExporter(Prometheus)
+	//_ = startExporter(OtelCollector)
 	// implement communication with other server nodes
 
 	// run go routin for continuose metrics analyses in order to take decision
-	go analyzer()
+	analyzer()
 }

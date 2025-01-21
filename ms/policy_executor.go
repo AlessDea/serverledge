@@ -1,65 +1,116 @@
-package main
+package ms
 
 import (
-	"fmt"
-	"os"
-
-	"gopkg.in/yaml.v2"
+	"log"
 )
 
-func loadPolicyConfig(filename string) error {
-	file, err := os.Open(filename)
-	if err != nil {
-		return fmt.Errorf("failed to open file: %v", err)
-	}
-	defer file.Close()
-
-	decoder := yaml.NewDecoder(file)
-	if err := decoder.Decode(&policy); err != nil {
-		return fmt.Errorf("failed to decode YAML: %v", err)
-	}
-
-	return nil
-}
-
-func checkCustomPolicy(nodeCPUUsage float64, nodeRAMUsage float64) {
-	for _, exporter := range policy.Exporters {
-		fmt.Printf("Exporter: %s\n", exporter.Name)
-		if nodeCPUUsage < exporter.StartConditions.CPUUsageBelow && nodeRAMUsage < exporter.StartConditions.RAMUsageBelow {
-			// start exporter
-			_ = startExporter(exporter.Name)
-		} else if nodeCPUUsage > exporter.StopConditions.CPUUsageAbove && nodeRAMUsage > exporter.StopConditions.RAMUsageAbove {
-			// stop exporter
-			_ = stopExporter(exporter.Name)
-		} else {
-			// if exporter is stopped run it
-			if isStopped(exportersState[exporter.Name]) {
-				_ = startExporter(exporter.Name)
-			} else if isPaused(exportersState[exporter.Name]) {
-				_ = unpauseExporter(exporter.Name)
-			} else {
-				// already running
-			}
+func perform_on_exporter(exporter string, command CommandType) {
+	switch exportersState[exporter] {
+	case paused:
+		if command == run {
+			_ = unpauseExporter(exporter)
+		} else if command == stop {
+			_ = stopExporter(exporter)
 		}
 
-		fmt.Printf("  Start Conditions: CPU < %.2f%%, RAM < %.2f%%\n",
-			exporter.StartConditions.CPUUsageBelow, exporter.StartConditions.RAMUsageBelow)
-		fmt.Printf("  Stop Conditions: CPU > %.2f%%, RAM > %.2f%%\n",
-			exporter.StopConditions.CPUUsageAbove, exporter.StopConditions.RAMUsageAbove)
-		fmt.Printf("  Idle Conditions: Idle for %d seconds\n", exporter.IdleConditions.IdleDurationSeconds)
+	case running:
+		if command == pause {
+			_ = pauseExporter(exporter)
+		} else if command == stop {
+			_ = stopExporter(exporter)
+		}
+	case stopped:
+		if command == run {
+			_ = startExporter(exporter)
+		} else if command == pause {
+			_ = pauseExporter(exporter)
+		}
+	default:
+		log.Printf("unexpected main.ExporterState")
 	}
 }
 
-func checkDefaultPolicy(nodeCPUUsage float64, nodeRAMUsage float64) {
-	if nodeCPUUsage > 95 && nodeRAMUsage > 95 {
+func execute_policy() {
+	switch state {
+	case MsFullPerf:
+		// run all
+		log.Println("Node in Full Performance State")
+		perform_on_exporter(ProcessExporter, config.FullPerformance.ProcessExporter)
+		perform_on_exporter(NodeExporter, config.FullPerformance.NodeExporter)
+		perform_on_exporter(OtelCollector, config.FullPerformance.OtelCollector)
+		perform_on_exporter(Prometheus, config.FullPerformance.Prometheus)
+
+	case MsPartialPerf:
+		// for now stop Process and Otel
+		log.Println("Node in Partial Performance State")
+		perform_on_exporter(ProcessExporter, config.PartialPerformance.ProcessExporter)
+		perform_on_exporter(OtelCollector, config.PartialPerformance.OtelCollector)
+		perform_on_exporter(NodeExporter, config.PartialPerformance.NodeExporter)
+		perform_on_exporter(Prometheus, config.PartialPerformance.Prometheus)
+
+	case MsDisabled:
+		// stop All
+		log.Println("Node in Disabled State")
+		perform_on_exporter(ProcessExporter, config.Disabled.ProcessExporter)
+		perform_on_exporter(NodeExporter, config.Disabled.NodeExporter)
+		perform_on_exporter(OtelCollector, config.Disabled.OtelCollector)
+		perform_on_exporter(Prometheus, config.Disabled.Prometheus)
+
+	case MsIdle:
+		// pause all
+		log.Println("Node in Idle State")
+		perform_on_exporter(ProcessExporter, config.Idle.ProcessExporter)
+		perform_on_exporter(NodeExporter, config.Idle.NodeExporter)
+		perform_on_exporter(OtelCollector, config.Idle.OtelCollector)
+		perform_on_exporter(Prometheus, config.Idle.Prometheus)
+	}
+}
+
+func change_state() {
+	execute_policy()
+}
+
+func check_change_state(nodeCPUUsage float64, nodeRAMUsage float64) {
+	checkNodeThreshold(nodeCPUUsage, nodeRAMUsage)
+	if state != prevState {
+		change_state()
+	}
+}
+
+// func checkDefaultPolicy(nodeCPUUsage float64, nodeRAMUsage float64) {
+// 	if nodeCPUUsage > 95 && nodeRAMUsage > 95 {
+// 		nodeState = StateInactive
+// 		prevState = state
+// 		state = MsDisabled
+// 	} else if nodeCPUUsage > 80 && nodeRAMUsage > 80 {
+// 		nodeState = StateCritical
+// 		prevState = state
+// 		state = MsIdle
+// 	} else if nodeCPUUsage > 70 && nodeRAMUsage > 70 {
+// 		nodeState = StateDegraded
+// 		prevState = state
+// 		state = MsPartialPerf
+// 	} else {
+// 		nodeState = StateNormal
+// 		prevState = state
+// 		state = MsFullPerf
+// 	}
+
+// 	if state != prevState {
+// 		change_state()
+// 	}
+// }
+
+func checkNodeThreshold(nodeCPUUsage float64, nodeRAMUsage float64) {
+	if nodeCPUUsage > thresholds.Inactive.Node.CPU && nodeRAMUsage > thresholds.Inactive.Node.RAM {
 		nodeState = StateInactive
 		prevState = state
 		state = MsDisabled
-	} else if nodeCPUUsage > 80 && nodeRAMUsage > 80 {
+	} else if nodeCPUUsage > thresholds.Critical.Node.CPU && nodeRAMUsage > thresholds.Critical.Node.RAM {
 		nodeState = StateCritical
 		prevState = state
 		state = MsIdle
-	} else if nodeCPUUsage > 70 && nodeRAMUsage > 70 {
+	} else if nodeCPUUsage > thresholds.Degraded.Node.CPU && nodeRAMUsage > thresholds.Degraded.Node.RAM {
 		nodeState = StateDegraded
 		prevState = state
 		state = MsPartialPerf
@@ -67,9 +118,5 @@ func checkDefaultPolicy(nodeCPUUsage float64, nodeRAMUsage float64) {
 		nodeState = StateNormal
 		prevState = state
 		state = MsFullPerf
-	}
-
-	if state != prevState {
-		change_state()
 	}
 }

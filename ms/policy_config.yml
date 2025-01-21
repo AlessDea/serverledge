@@ -1,30 +1,20 @@
-exporters:
-  - name: "node-exporter"
-    start_conditions:
-      cpu_usage_below: 70
-      ram_usage_below: 80
-    stop_conditions:
-      cpu_usage_above: 85
-      ram_usage_above: 90
-    idle_conditions:
-      idle_duration_seconds: 600
-
-  - name: "process-exporter"
-    start_conditions:
-      cpu_usage_below: 60
-      ram_usage_below: 75
-    stop_conditions:
-      cpu_usage_above: 80
-      ram_usage_above: 85
-    idle_conditions:
-      idle_duration_seconds: 300
-
-  - name: "otel-collector"
-    start_conditions:
-      cpu_usage_below: 50
-      ram_usage_below: 70
-    stop_conditions:
-      cpu_usage_above: 80
-      ram_usage_above: 90
-    idle_conditions:
-      idle_duration_seconds: 300
+Idle:
+  node-exporter: pause
+  process-exporter: pause
+  otel-collector: pause
+  prometheus: pause
+Disabled:
+  node-exporter: stop
+  process-exporter: stop
+  otel-collector: stop
+  prometheus: stop
+PartialPerformance:
+  node-exporter: run
+  process-exporter: pause
+  otel-collector: pause
+  prometheus: run
+FullPerformance:
+  node-exporter: run
+  process-exporter: run
+  otel-collector: run
+  prometheus: run

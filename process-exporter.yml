@@ -2,3 +2,15 @@ process_names:
   - name: "serverledge"
     cmdline:
       - 'serverledge'
+  - name: "proc_expo"
+    cmdline:
+      - 'process-exporter'
+  - name: "node_expo"
+    cmdline:
+      - 'node_exporter'
+  - name: "prometheus"
+    cmdline:
+      - 'prometheus'
+  - name: "monitoring_system"
+    cmdline:
+      - 'monitoring_system'
