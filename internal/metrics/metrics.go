@@ -1,11 +1,14 @@
 package metrics
 
 import (
+	"encoding/json"
 	"log"
+	"strconv"
 	"time"
 
 	"net/http"
 
+	"github.com/grussorusso/serverledge/internal/config"
 	"github.com/grussorusso/serverledge/internal/node"
 
 	"github.com/prometheus/client_golang/prometheus"
@@ -41,53 +44,16 @@ const (
 )
 
 func Init() {
-	// if config.GetBool(config.METRICS_ENABLED, false) {
-	// 	log.Println("Metrics enabled.")
-	// 	Enabled = true
-	// } else {
-	// 	Enabled = false
-	// 	return
-	// }
+	if config.GetBool(config.METRICS_ENABLED, false) {
+		log.Println("Metrics enabled.")
+		Enabled = true
+	} else {
+		Enabled = false
+		return
+	}
 
 	Enabled = true
 	nodeIdentifier = node.NodeIdentifier
-
-	// --- NEW ---
-
-	// // Path to the configuration file
-	// configPath := "../../metrics-config.yml"
-
-	// // Read metrics from configuration file
-	// config, err := readMetricsConfig(configPath)
-	// if err != nil {
-	// 	log.Fatalf("Error reading metrics configuration: %v", err)
-	// }
-
-	// // Register metrics and get the gauge map
-	// gaugeMap, err := registerMetrics(config)
-	// if err != nil {
-	// 	log.Fatalf("Error registering metrics: %v", err)
-	// }
-
-	// register global metrics
-	// registerGlobalMetrics()
-
-	// // Start a goroutine to collect metrics periodically
-	// go func() {
-	// 	for {
-	// 		collectMetrics("http://localhost:9100/metrics", gaugeMap) // collect from Node Exporter
-	// 		collectMetrics("http://localhost:9256/metrics", gaugeMap) // collect from Process Exporter
-	// 		time.Sleep(10 * time.Second)
-	// 	}
-	// }()
-
-	// // Expose metrics to Prometheus on /metrics
-	// http.Handle("/metrics", promhttp.Handler())
-	// addr := "127.0.0.1:2112" // Port for Prometheus
-	// log.Println("Exposing metrics on %s", addr)
-	// log.Fatal(http.ListenAndServe(addr, nil))
-
-	// -----------
 
 	// metrics registration
 	registerNodeMetrics()
@@ -103,7 +69,29 @@ func Init() {
 
 	// Espone le metriche su /metrics per Prometheus
 	http.Handle("/metrics", promhttp.Handler())
-	port := ":2112" // Porta per Prometheus
+
+	// Esponi le metriche in formato JSON (prometheus non supporta JSON)
+	http.HandleFunc("/metrics/json", func(w http.ResponseWriter, r *http.Request) {
+		metricFamilies, err := prometheus.DefaultGatherer.Gather()
+		if err != nil {
+			http.Error(w, "Errore nella raccolta delle metriche", http.StatusInternalServerError)
+			return
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		jsonMetrics := make(map[string]interface{})
+
+		for _, mf := range metricFamilies {
+			metricName := mf.GetName()
+			jsonMetrics[metricName] = mf
+		}
+
+		if err := json.NewEncoder(w).Encode(jsonMetrics); err != nil {
+			http.Error(w, "Errore nella codifica JSON", http.StatusInternalServerError)
+		}
+	})
+
+	port := ":" + strconv.Itoa(config.GetInt(config.METRICS_EXPORT_PORT, 2112)) //":2112" // Porta per Prometheus
 	log.Println("Esportazione delle metriche su localhost" + port)
 	log.Fatal(http.ListenAndServe(port, nil))
 
@@ -128,9 +116,25 @@ var (
 	// 	Help:    "Function duration",
 	// 	Buckets: durationBuckets,
 	// },
+	// Duration
 	ExecutionTimes = promauto.NewGaugeVec(prometheus.GaugeOpts{
 		Name: "sedge_exectime",
 		Help: "Function duration",
+	}, []string{"node", "function"})
+
+	IsWarmStart = promauto.NewCounterVec(prometheus.CounterOpts{
+		Name: "sedge_is_warm_start",
+		Help: "Whether the container was warm or not",
+	}, []string{"node", "function"})
+
+	InitTime = promauto.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "sedge_init_time",
+		Help: "Container initialization time",
+	}, []string{"node", "function"})
+
+	ResponseTime = promauto.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "sedge_response_time",
+		Help: "Container response time",
 	}, []string{"node", "function"})
 )
 
@@ -165,15 +169,35 @@ var durationBuckets = []float64{0.002, 0.005, 0.010, 0.02, 0.03, 0.05, 0.1, 0.15
 func AddCompletedInvocation(funcName string) {
 	CompletedInvocations.With(prometheus.Labels{"function": funcName, "node": nodeIdentifier}).Inc()
 }
+
 func AddFunctionDurationValue(funcName string, duration float64) {
 	//ExecutionTimes.With(prometheus.Labels{"function": funcName, "node": nodeIdentifier}).Observe(duration)
 	ExecutionTimes.With(prometheus.Labels{"function": funcName, "node": nodeIdentifier}).Set(duration)
+}
 
+func AddFunctionWarmStart(funcName string, isWarmStart bool) {
+	//ExecutionTimes.With(prometheus.Labels{"function": funcName, "node": nodeIdentifier}).Observe(duration)
+	if isWarmStart {
+		IsWarmStart.With(prometheus.Labels{"function": funcName, "node": nodeIdentifier}).Inc()
+	}
+}
+
+func AddFunctionInitTime(funcName string, time float64) {
+	//ExecutionTimes.With(prometheus.Labels{"function": funcName, "node": nodeIdentifier}).Observe(duration)
+	InitTime.With(prometheus.Labels{"function": funcName, "node": nodeIdentifier}).Set(time)
+}
+
+func AddFunctionResponseTime(funcName string, time float64) {
+	//ExecutionTimes.With(prometheus.Labels{"function": funcName, "node": nodeIdentifier}).Observe(duration)
+	ResponseTime.With(prometheus.Labels{"function": funcName, "node": nodeIdentifier}).Set(time)
 }
 
 func registerGlobalMetrics() {
 	prometheus.Register(CompletedInvocations)
 	prometheus.Register(ExecutionTimes)
+	prometheus.Register(IsWarmStart)
+	prometheus.Register(InitTime)
+	prometheus.Register(ResponseTime)
 }
 
 func registerNodeMetrics() {

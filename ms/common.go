@@ -38,6 +38,10 @@ const (
 	pause CommandType = "pause"
 )
 
+func GetNodeState() NodeState {
+	return nodeState
+}
+
 func isRunning(state ExporterState) bool {
 	if state == running {
 		return true

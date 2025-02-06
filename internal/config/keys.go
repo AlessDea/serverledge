@@ -70,3 +70,9 @@ const TRACING_ENABLED = "tracing.enabled"
 
 // Custom output file for traces
 const TRACING_OUTFILE = "tracing.outfile"
+
+// NOTE: Metrics export port: only for testing purpose otherwise the master doesn't know this port of other nodes
+const METRICS_EXPORT_PORT = "metrics.export.port"
+
+// Force the node to be the master
+const IM_THE_MASTER = "dms.master"

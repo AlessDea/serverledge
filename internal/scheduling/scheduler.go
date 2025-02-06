@@ -72,11 +72,13 @@ func Run(p Policy) {
 				metrics.AddCompletedInvocation(c.fun.Name)
 				if c.executionReport.SchedAction != SCHED_ACTION_OFFLOAD {
 					metrics.AddFunctionDurationValue(c.fun.Name, c.executionReport.Duration)
+					metrics.AddFunctionWarmStart(c.fun.Name, c.executionReport.IsWarmStart)
+					metrics.AddFunctionInitTime(c.fun.Name, c.executionReport.InitTime)
+					metrics.AddFunctionResponseTime(c.fun.Name, c.executionReport.ResponseTime)
 				}
 			}
 		}
 	}
-
 }
 
 // SubmitRequest submits a newly arrived request for scheduling and execution

@@ -14,8 +14,10 @@ import (
 	"os/exec"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
+	bully "github.com/grussorusso/serverledge/dms/bully_algorithm"
 	"gopkg.in/yaml.v2"
 )
 
@@ -232,7 +234,7 @@ func calculateProcessRAM(URL string) (float64, error) {
 	return processRAMUsage, nil
 }
 
-func analyzer() {
+func analyzer(uc chan bully.NodeInfo) {
 	url := "http://localhost:2112/metrics" // read metrics from
 	for {
 		// Calculate CPU and RAM usage for the node
@@ -267,16 +269,18 @@ func analyzer() {
 
 		check_change_state(nodeCPUUsage, nodeRAMUsage)
 
+		uc <- bully.NodeInfo{Status: string(nodeState), AvailableRsrc: (nodeCPUUsage + nodeRAMUsage)}
+
 		// Wait before next iteration
 		log.Printf("Waiting")
 		time.Sleep(10 * time.Second)
 	}
 }
 
-func Init() {
+func Init(wg *sync.WaitGroup, uc chan bully.NodeInfo) {
+	defer wg.Done() // Segnala che la goroutine ha finito
 
 	// load thresholds
-	log.Println("PORCODIO")
 	err := loadThresholdsConfig(thresholdsConfigPath)
 	if err != nil {
 		fmt.Printf("Error loading thresholds: %v\n", err)
@@ -301,5 +305,5 @@ func Init() {
 	// implement communication with other server nodes
 
 	// run go routin for continuose metrics analyses in order to take decision
-	analyzer()
+	analyzer(uc)
 }
