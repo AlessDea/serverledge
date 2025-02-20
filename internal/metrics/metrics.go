@@ -13,6 +13,8 @@ import (
 	"net/http"
 
 	"github.com/grussorusso/serverledge/internal/config"
+	"github.com/grussorusso/serverledge/internal/container"
+	// "github.com/grussorusso/serverledge/internal/container"
 	"github.com/grussorusso/serverledge/internal/node"
 
 	"github.com/prometheus/client_golang/prometheus"
@@ -105,6 +107,11 @@ func Init() {
 	port := ":" + strconv.Itoa(config.GetInt(config.METRICS_EXPORT_PORT, 2112)) //":2112" // Porta per Prometheus
 	log.Println("Esportazione delle metriche su localhost" + port)
 	log.Fatal(http.ListenAndServe(port, nil))
+
+	// add functions to be monitored
+	container.ContainersPerFunctions["lif"] = 0
+	container.ContainersPerFunctions["kmeans"] = 0
+	container.ContainersPerFunctions["rsa"] = 0
 
 	// handler := promhttp.HandlerFor(registry, promhttp.HandlerOpts{
 	// 	EnableOpenMetrics: true})
@@ -338,8 +345,8 @@ func GetContainerMetrics(containerName string) (ContainerMetrics, error) {
 	var cpuUsage, memUsage float64
 
 	// Espressioni regolari per catturare il valore numerico
-	cpuRegex := regexp.MustCompile(fmt.Sprintf(`container_cpu_usage_seconds_total\{.*name="%s".*\} ([0-9.]+)`, containerName))
-	memRegex := regexp.MustCompile(fmt.Sprintf(`container_memory_usage_bytes\{.*name="%s".*\} ([0-9.]+)`, containerName))
+	cpuRegex := regexp.MustCompile(fmt.Sprintf(`container_cpu_usage_seconds_total\{.*name="%s[0-9]*".*\} ([0-9.]+)`, containerName))
+	memRegex := regexp.MustCompile(fmt.Sprintf(`container_memory_usage_bytes\{.*name="%s[0-9]*".*\} ([0-9.]+)`, containerName))
 
 	for _, line := range lines {
 		// Cerca la metrica CPU

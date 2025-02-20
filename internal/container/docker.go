@@ -14,6 +14,8 @@ import (
 	//	"github.com/docker/docker/pkg/stdcopy"
 )
 
+var ContainersPerFunctions = make(map[string]int)
+
 type DockerFactory struct {
 	cli *client.Client
 	ctx context.Context
@@ -43,12 +45,13 @@ func (cf *DockerFactory) Create(image string, opts *ContainerOptions) (Container
 		contResources.CPUQuota = (int64)(50000.0 * opts.CPUQuota)
 	}
 
+	cname := fmt.Sprintf("%s%d", opts.CName, ContainersPerFunctions[opts.CName])
 	resp, err := cf.cli.ContainerCreate(cf.ctx, &container.Config{
 		Image: image,
 		Cmd:   opts.Cmd,
 		Env:   opts.Env,
 		Tty:   false,
-	}, &container.HostConfig{Resources: contResources}, nil, nil, opts.CName) // add the name of the function
+	}, &container.HostConfig{Resources: contResources}, nil, nil, cname)
 
 	if err != nil {
 		log.Printf("Could not create the container: %v\n", err)
@@ -59,6 +62,7 @@ func (cf *DockerFactory) Create(image string, opts *ContainerOptions) (Container
 
 	r, err := cf.cli.ContainerInspect(cf.ctx, id)
 	log.Printf("Container %s has name %s\n", id, r.Name)
+	ContainersPerFunctions[opts.CName] += 1
 
 	return id, err
 }
