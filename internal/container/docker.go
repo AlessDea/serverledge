@@ -48,7 +48,7 @@ func (cf *DockerFactory) Create(image string, opts *ContainerOptions) (Container
 		Cmd:   opts.Cmd,
 		Env:   opts.Env,
 		Tty:   false,
-	}, &container.HostConfig{Resources: contResources}, nil, nil, "")
+	}, &container.HostConfig{Resources: contResources}, nil, nil, opts.CName) // add the name of the function
 
 	if err != nil {
 		log.Printf("Could not create the container: %v\n", err)

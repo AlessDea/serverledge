@@ -19,7 +19,7 @@ Options
 """
 
 
-def lambda_handler(event, context):
+def handler(event, context):
     bs = 'bs='+event['bs']
     count = 'count='+event['count']
 

@@ -2,8 +2,12 @@ package metrics
 
 import (
 	"encoding/json"
+	"fmt"
+	"io/ioutil"
 	"log"
+	"regexp"
 	"strconv"
+	"strings"
 	"time"
 
 	"net/http"
@@ -37,10 +41,17 @@ var previousTimestamps = make(map[string]time.Time)
 var prevProcessValues = make(map[string]float64)
 var previousProcTimestamps = make(map[string]time.Time)
 
+// Struttura per rappresentare le metriche di un container
+type ContainerMetrics struct {
+	CPUUsage    float64
+	MemoryUsage float64
+}
+
 // Node Exporter and Process Exporter endpoints
 const (
-	nodeExporterURL    = "http://localhost:9100/metrics"
-	processExporterURL = "http://localhost:9256/metrics"
+	nodeExporterURL     = "http://localhost:9100/metrics"
+	processExporterURL  = "http://localhost:9256/metrics"
+	cAdvisorExporterURL = "http://localhost:8080/metrics"
 )
 
 func Init() {
@@ -105,7 +116,7 @@ func Init() {
 	// }
 }
 
-// Global metrics
+// Functions metrics
 var (
 	CompletedInvocations = promauto.NewCounterVec(prometheus.CounterOpts{
 		Name: "sedge_completed_total",
@@ -122,9 +133,9 @@ var (
 		Help: "Function duration",
 	}, []string{"node", "function"})
 
-	IsWarmStart = promauto.NewCounterVec(prometheus.CounterOpts{
-		Name: "sedge_is_warm_start",
-		Help: "Whether the container was warm or not",
+	IsColdStart = promauto.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "sedge_is_cold_start",
+		Help: "Whether the container was cold or not",
 	}, []string{"node", "function"})
 
 	InitTime = promauto.NewGaugeVec(prometheus.GaugeOpts{
@@ -135,6 +146,16 @@ var (
 	ResponseTime = promauto.NewGaugeVec(prometheus.GaugeOpts{
 		Name: "sedge_response_time",
 		Help: "Container response time",
+	}, []string{"node", "function"})
+
+	FuncCPUTotal = promauto.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "sedge_func_cpu_total",
+		Help: "Function's container total cpu time",
+	}, []string{"node", "function"})
+
+	FuncMemTotal = promauto.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "sedge_func_mem_total",
+		Help: "Function's container total mem time",
 	}, []string{"node", "function"})
 )
 
@@ -175,10 +196,11 @@ func AddFunctionDurationValue(funcName string, duration float64) {
 	ExecutionTimes.With(prometheus.Labels{"function": funcName, "node": nodeIdentifier}).Set(duration)
 }
 
-func AddFunctionWarmStart(funcName string, isWarmStart bool) {
-	//ExecutionTimes.With(prometheus.Labels{"function": funcName, "node": nodeIdentifier}).Observe(duration)
-	if isWarmStart {
-		IsWarmStart.With(prometheus.Labels{"function": funcName, "node": nodeIdentifier}).Inc()
+func AddFunctionWarmStart(funcName string, isWarm bool) {
+	if !isWarm {
+		IsColdStart.With(prometheus.Labels{"function": funcName, "node": nodeIdentifier}).Set(1)
+	} else {
+		IsColdStart.With(prometheus.Labels{"function": funcName, "node": nodeIdentifier}).Set(0)
 	}
 }
 
@@ -192,12 +214,24 @@ func AddFunctionResponseTime(funcName string, time float64) {
 	ResponseTime.With(prometheus.Labels{"function": funcName, "node": nodeIdentifier}).Set(time)
 }
 
+func AddFunctionCPUTotal(funcName string, usage float64) {
+	//ExecutionTimes.With(prometheus.Labels{"function": funcName, "node": nodeIdentifier}).Observe(duration)
+	FuncCPUTotal.With(prometheus.Labels{"function": funcName, "node": nodeIdentifier}).Set(usage)
+}
+
+func AddFunctionMemTotal(funcName string, usage float64) {
+	//ExecutionTimes.With(prometheus.Labels{"function": funcName, "node": nodeIdentifier}).Observe(duration)
+	FuncMemTotal.With(prometheus.Labels{"function": funcName, "node": nodeIdentifier}).Set(usage)
+}
+
 func registerGlobalMetrics() {
 	prometheus.Register(CompletedInvocations)
 	prometheus.Register(ExecutionTimes)
-	prometheus.Register(IsWarmStart)
+	prometheus.Register(IsColdStart)
 	prometheus.Register(InitTime)
 	prometheus.Register(ResponseTime)
+	prometheus.Register(FuncCPUTotal)
+	prometheus.Register(FuncMemTotal)
 }
 
 func registerNodeMetrics() {
@@ -216,6 +250,7 @@ func registerProcessMetrics() {
 func metricsCollector() {
 	collectNodeMetrics()
 	collectProcessMetrics()
+	collectCAdvisorMetrics()
 }
 
 func collectNodeMetrics() {
@@ -247,6 +282,81 @@ func collectProcessMetrics() {
 		"namedprocess_namegroup_cpu_seconds_total",
 		"namedprocess_namegroup_memory_bytes",
 	})
+}
+
+func collectCAdvisorMetrics() {
+	// TODO: read function names from registry
+	rsa, err := GetContainerMetrics("rsa")
+	if err != nil {
+		log.Printf("Errore nel recuperare le metriche di cAdvisor: %v", err)
+		AddFunctionCPUTotal("rsa", 0)
+		AddFunctionMemTotal("rsa", 0)
+	} else {
+		AddFunctionCPUTotal("rsa", rsa.CPUUsage)
+		AddFunctionMemTotal("rsa", rsa.MemoryUsage)
+		log.Printf("cAdvisor: %2.f", rsa.CPUUsage)
+	}
+	kmc, err := GetContainerMetrics("kmeans")
+	if err != nil {
+		log.Printf("Errore nel recuperare le metriche di cAdvisor: %v", err)
+		AddFunctionCPUTotal("kmeans", 0)
+		AddFunctionMemTotal("kmeans", 0)
+	} else {
+		AddFunctionCPUTotal("kmeans", kmc.CPUUsage)
+		AddFunctionMemTotal("kmeans", kmc.MemoryUsage)
+	}
+	lif, err := GetContainerMetrics("lif")
+	if err != nil {
+		log.Printf("Errore nel recuperare le metriche di cAdvisor: %v", err)
+		AddFunctionCPUTotal("lif", 0)
+		AddFunctionMemTotal("lif", 0)
+	} else {
+		AddFunctionCPUTotal("lif", lif.CPUUsage)
+		AddFunctionMemTotal("lif", lif.MemoryUsage)
+	}
+	// ...
+
+}
+
+// Recupera metriche da cAdvisor per un container specifico
+func GetContainerMetrics(containerName string) (ContainerMetrics, error) {
+
+	// Effettua la richiesta HTTP a cAdvisor
+	resp, err := http.Get(cAdvisorExporterURL)
+	if err != nil {
+		return ContainerMetrics{}, fmt.Errorf("Errore richiesta cAdvisor: %v", err)
+	}
+	defer resp.Body.Close()
+
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return ContainerMetrics{}, fmt.Errorf("Errore lettura risposta cAdvisor: %v", err)
+	}
+
+	// Converte il testo in stringa e filtra solo le metriche del container specifico
+	lines := strings.Split(string(body), "\n")
+	var cpuUsage, memUsage float64
+
+	// Espressioni regolari per catturare il valore numerico
+	cpuRegex := regexp.MustCompile(fmt.Sprintf(`container_cpu_usage_seconds_total\{.*name="%s".*\} ([0-9.]+)`, containerName))
+	memRegex := regexp.MustCompile(fmt.Sprintf(`container_memory_usage_bytes\{.*name="%s".*\} ([0-9.]+)`, containerName))
+
+	for _, line := range lines {
+		// Cerca la metrica CPU
+		if match := cpuRegex.FindStringSubmatch(line); match != nil {
+			cpuUsage, _ = strconv.ParseFloat(match[1], 64)
+		}
+
+		// Cerca la metrica Memoria
+		if match := memRegex.FindStringSubmatch(line); match != nil {
+			memUsage, _ = strconv.ParseFloat(match[1], 64)
+		}
+	}
+
+	return ContainerMetrics{
+		CPUUsage:    cpuUsage,
+		MemoryUsage: memUsage,
+	}, nil
 }
 
 // Funzione di supporto per calcolare la media di un vettore di float64

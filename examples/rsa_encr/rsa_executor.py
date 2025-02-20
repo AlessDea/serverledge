@@ -5,7 +5,7 @@ import sys
 import importlib
 import json
 import jsonschema
-import function
+import rsa_func
 
 hostName = "0.0.0.0"
 serverPort = 8080
@@ -36,7 +36,7 @@ class Executor(BaseHTTPRequestHandler):
         response = {}
 
         try:
-            result = function.handler(params, context)
+            result = rsa_func.handler(params, context)
             response["Result"] = json.dumps(result)
             response["Success"] = True
         except Exception as e:

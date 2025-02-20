@@ -22,6 +22,7 @@ type ContainerOptions struct {
 	Env      []string
 	MemoryMB int64
 	CPUQuota float64
+	CName    string
 }
 
 type ContainerID = string
