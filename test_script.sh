@@ -21,3 +21,4 @@ do
   sleep $t
 done
 
+bin/serverledge-cli invoke -f rsa -p m:ciaoatuttiquantillllll1111111111
