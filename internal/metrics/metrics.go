@@ -14,6 +14,7 @@ import (
 
 	"github.com/grussorusso/serverledge/internal/config"
 	"github.com/grussorusso/serverledge/internal/container"
+
 	// "github.com/grussorusso/serverledge/internal/container"
 	"github.com/grussorusso/serverledge/internal/node"
 
@@ -321,14 +322,30 @@ func collectCAdvisorMetrics() {
 		AddFunctionCPUTotal("lif", lif.CPUUsage)
 		AddFunctionMemTotal("lif", lif.MemoryUsage)
 	}
+	dd, err := GetContainerMetrics("dd")
+	if err != nil {
+		log.Printf("Errore nel recuperare le metriche di cAdvisor: %v", err)
+		AddFunctionCPUTotal("dd", 0)
+		AddFunctionMemTotal("dd", 0)
+	} else {
+		AddFunctionCPUTotal("dd", dd.CPUUsage)
+		AddFunctionMemTotal("dd", dd.MemoryUsage)
+	}
+	msort, err := GetContainerMetrics("msort")
+	if err != nil {
+		log.Printf("Errore nel recuperare le metriche di cAdvisor: %v", err)
+		AddFunctionCPUTotal("msort", 0)
+		AddFunctionMemTotal("msort", 0)
+	} else {
+		AddFunctionCPUTotal("msort", msort.CPUUsage)
+		AddFunctionMemTotal("msort", msort.MemoryUsage)
+	}
 	// ...
 
 }
 
-// Recupera metriche da cAdvisor per un container specifico
 func GetContainerMetrics(containerName string) (ContainerMetrics, error) {
 
-	// Effettua la richiesta HTTP a cAdvisor
 	resp, err := http.Get(cAdvisorExporterURL)
 	if err != nil {
 		return ContainerMetrics{}, fmt.Errorf("Errore richiesta cAdvisor: %v", err)
@@ -340,21 +357,17 @@ func GetContainerMetrics(containerName string) (ContainerMetrics, error) {
 		return ContainerMetrics{}, fmt.Errorf("Errore lettura risposta cAdvisor: %v", err)
 	}
 
-	// Converte il testo in stringa e filtra solo le metriche del container specifico
 	lines := strings.Split(string(body), "\n")
 	var cpuUsage, memUsage float64
 
-	// Espressioni regolari per catturare il valore numerico
 	cpuRegex := regexp.MustCompile(fmt.Sprintf(`container_cpu_usage_seconds_total\{.*name="%s[0-9]*".*\} ([0-9.]+)`, containerName))
 	memRegex := regexp.MustCompile(fmt.Sprintf(`container_memory_usage_bytes\{.*name="%s[0-9]*".*\} ([0-9.]+)`, containerName))
 
 	for _, line := range lines {
-		// Cerca la metrica CPU
 		if match := cpuRegex.FindStringSubmatch(line); match != nil {
 			cpuUsage, _ = strconv.ParseFloat(match[1], 64)
 		}
 
-		// Cerca la metrica Memoria
 		if match := memRegex.FindStringSubmatch(line); match != nil {
 			memUsage, _ = strconv.ParseFloat(match[1], 64)
 		}

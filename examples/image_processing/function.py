@@ -1,19 +1,17 @@
-import boto3
 import uuid
 from time import time
 from PIL import Image
-
 import ops
+import os
+import base64
 
-s3_client = boto3.client('s3')
-FILE_NAME_INDEX = 2
-
+FILE_NAME_INDEX = -1
 
 def image_processing(file_name, image_path):
     path_list = []
     start = time()
+
     with Image.open(image_path) as image:
-        tmp = image
         path_list += ops.flip(image, file_name)
         path_list += ops.rotate(image, file_name)
         path_list += ops.filter(image, file_name)
@@ -23,19 +21,25 @@ def image_processing(file_name, image_path):
     latency = time() - start
     return latency, path_list
 
+def handler(params, context):
+    try:
+        file_name = params["file_name"]
+        file_content = params["file_content"]
 
-def lambda_handler(event, context):
-    input_bucket = event['input_bucket']
-    object_key = event['object_key']
-    output_bucket = event['output_bucket']
+        file_content = base64.b64decode(file_content)
 
-    download_path = '/tmp/{}{}'.format(uuid.uuid4(), object_key)
+        temp_dir = "/tmp/"
+        image_path = os.path.join(temp_dir, f"{uuid.uuid4()}_{file_name}")
 
-    s3_client.download_file(input_bucket, object_key, download_path)
+        with open(image_path, "wb") as f:
+            f.write(file_content)
 
-    latency, path_list = image_processing(object_key, download_path)
+        latency, path_list = image_processing(file_name, image_path)
 
-    for upload_path in path_list:
-        s3_client.upload_file(upload_path, output_bucket, upload_path.split("/")[FILE_NAME_INDEX])
+        return {
+            "latency": latency,
+            "processed_files": path_list
+        }
 
-    return latency
+    except Exception as e:
+        return {"error": str(e)}
