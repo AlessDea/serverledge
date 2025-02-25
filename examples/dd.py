@@ -41,11 +41,12 @@ import subprocess
 
 TMP_DIR = '/tmp'
 
-def handler(params, context):   
-    bs = f'bs={params['bs']}'
+def handler(params, context):
+    bs_value = int(params.get('bs', 512))
+    bs = f'bs={bs_value}'
     
     try:
-        count_value = int(params.get('count', 1))  # Default a 1
+        count_value = int(params.get('count', 1024))  # Default 1024
         if count_value <= 0:
             raise ValueError("count's value must be grather than zero.")
     except ValueError:
