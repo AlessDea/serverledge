@@ -340,6 +340,16 @@ func collectCAdvisorMetrics() {
 		AddFunctionCPUTotal("msort", msort.CPUUsage)
 		AddFunctionMemTotal("msort", msort.MemoryUsage)
 	}
+	imgp, err := GetContainerMetrics("imgp")
+	if err != nil {
+		log.Printf("Errore nel recuperare le metriche di cAdvisor: %v", err)
+		AddFunctionCPUTotal("imgp", 0)
+		AddFunctionMemTotal("imgp", 0)
+	} else {
+		AddFunctionCPUTotal("imgp", imgp.CPUUsage)
+		AddFunctionMemTotal("imgp", imgp.MemoryUsage)
+	}
+
 	// ...
 
 }
