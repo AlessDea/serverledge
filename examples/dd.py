@@ -42,7 +42,7 @@ import subprocess
 TMP_DIR = '/tmp'
 
 def handler(params, context):   
-    bs = 'bs='+params['bs']
+    bs = f'bs={params['bs']}'
     
     try:
         count_value = int(params.get('count', 1))  # Default a 1
