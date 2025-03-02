@@ -11,6 +11,8 @@ require (
 	github.com/labstack/echo/v4 v4.6.1
 	github.com/lithammer/shortuuid v3.0.0+incompatible
 	github.com/prometheus/client_golang v1.13.0
+	github.com/prometheus/common v0.37.0
+	github.com/rs/cors v1.11.1
 	github.com/spf13/cobra v1.0.0
 	github.com/spf13/viper v1.4.0
 	go.etcd.io/etcd/client/v3 v3.5.1
@@ -19,6 +21,8 @@ require (
 	go.opentelemetry.io/otel/sdk v1.28.0
 	go.opentelemetry.io/otel/trace v1.28.0
 	golang.org/x/net v0.0.0-20220225172249-27dd8689420f
+	gopkg.in/yaml.v2 v2.4.0
+	gopkg.in/yaml.v3 v3.0.1
 )
 
 require (
@@ -54,7 +58,6 @@ require (
 	github.com/pelletier/go-toml v1.8.1 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/prometheus/client_model v0.2.0 // indirect
-	github.com/prometheus/common v0.37.0 // indirect
 	github.com/prometheus/procfs v0.8.0 // indirect
 	github.com/sirupsen/logrus v1.8.1 // indirect
 	github.com/spf13/afero v1.2.2 // indirect
@@ -76,7 +79,5 @@ require (
 	google.golang.org/genproto v0.0.0-20210602131652-f16073e35f0c // indirect
 	google.golang.org/grpc v1.41.0 // indirect
 	google.golang.org/protobuf v1.28.1 // indirect
-	gopkg.in/yaml.v2 v2.4.0 // indirect
-	gopkg.in/yaml.v3 v3.0.1 // indirect
 
 )

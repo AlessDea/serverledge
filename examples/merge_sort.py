@@ -26,7 +26,8 @@ def merge(left, right):
 
 def handler(params, context):
     try:
-        arr = params["array"]
+        arr = json.loads(params["array"]) if isinstance(params["array"], str) else params["array"]
+        #arr = params["array"]
         sorted_list = merge_sort(arr)
         return {"Sorted list": sorted_list}
     except:
