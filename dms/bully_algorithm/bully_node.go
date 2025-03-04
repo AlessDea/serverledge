@@ -81,7 +81,7 @@ func (node *BullyNode) connect(peerAddr string) *rpc.Client {
 retry:
 	client, err := rpc.Dial("tcp", peerAddr)
 	if err != nil {
-		log.Printf("Error dialing rpc dial %s: %s\n", peerAddr, err.Error())
+		//log.Printf("Error dialing rpc dial %s: %s\n", peerAddr, err.Error())
 		time.Sleep(50 * time.Millisecond)
 		goto retry
 	}
