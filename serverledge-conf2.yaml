@@ -4,7 +4,7 @@ etcd.address: "127.0.0.1:2379"
 scheduler.queue.capacity: 0
 metrics.enabled: false
 container.expiration: 10
-registry.udp.port: 9988
+registry.udp.port: 9788
 api.port: 1333
 metrics.export.port: 2113
 dms.bully.algo.port: 7878

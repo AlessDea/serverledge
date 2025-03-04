@@ -65,6 +65,7 @@ func main() {
 		log.Printf("This node identifier is %s\n", node.NodeIdentifier)
 	}
 
+	Reg.Key = node.NodeIdentifier
 	// start the monitoring: we need it to discover servers in the area
 	err = registration.InitEdgeMonitoring(Reg, false)
 	if err != nil {

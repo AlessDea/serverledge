@@ -4,6 +4,7 @@ import (
 	"log"
 	"reflect"
 	"sort"
+	"strings"
 	"time"
 
 	"github.com/grussorusso/serverledge/internal/config"
@@ -92,6 +93,9 @@ func monitoring() {
 	delete(etcdServerMap, Reg.Key) // not consider myself
 
 	for key, url := range etcdServerMap {
+		if strings.Contains(key, "cloud") {
+			continue
+		}
 		oldInfo, ok := Reg.serversMap[key]
 
 		ip := url[7 : len(url)-5]
