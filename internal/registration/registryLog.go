@@ -164,6 +164,9 @@ func nearbyMonitoring() {
 	Reg.RwMtx.Lock()
 	defer Reg.RwMtx.Unlock()
 	for key, info := range Reg.NearbyServersMap {
+		if strings.Contains(key, "cloud") {
+			continue
+		}
 		oldInfo, ok := Reg.serversMap[key]
 
 		ip := info.Url[7 : len(info.Url)-5]

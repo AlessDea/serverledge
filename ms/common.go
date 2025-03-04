@@ -24,6 +24,7 @@ const (
 	ProcessExporter string = "process-exporter"
 	OtelCollector   string = "otel-collector"
 	Prometheus      string = "prom"
+	CAdvisor        string = "cadvisor"
 )
 
 const (
@@ -110,6 +111,7 @@ type Actions struct {
 	ProcessExporter CommandType `yaml:"process-exporter"`
 	OtelCollector   CommandType `yaml:"otel-collector"`
 	Prometheus      CommandType `yaml:"prometheus"`
+	CAdvisor        CommandType `yaml:"cadvisor"`
 }
 
 var exportersState = make(map[string]ExporterState)

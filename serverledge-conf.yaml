@@ -1,5 +1,6 @@
+cloud: true
 container.pool.memory: 4096
-etcd.address: "192.168.122.31:2379"
+etcd.address: "127.0.0.1:2379"
 scheduler.queue.capacity: 0
 metrics.enabled: false
 container.expiration: 10

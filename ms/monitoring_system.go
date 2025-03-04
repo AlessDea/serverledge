@@ -301,6 +301,7 @@ func Init(wg *sync.WaitGroup, uc chan bully.NodeInfo) {
 	_ = startExporter(NodeExporter)
 	_ = startExporter(ProcessExporter)
 	_ = startExporter(Prometheus)
+	_ = startExporter(CAdvisor)
 	//_ = startExporter(OtelCollector)
 	// implement communication with other server nodes
 

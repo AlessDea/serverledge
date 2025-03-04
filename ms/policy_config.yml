@@ -1,20 +1,20 @@
 Idle:
   node-exporter: pause
   process-exporter: pause
-  otel-collector: pause
+  cadvisor: pause
   prometheus: pause
 Disabled:
   node-exporter: stop
   process-exporter: stop
-  otel-collector: stop
+  cadvisor: stop
   prometheus: stop
 PartialPerformance:
   node-exporter: run
   process-exporter: pause
-  otel-collector: pause
+  cadvisor: pause
   prometheus: run
 FullPerformance:
   node-exporter: run
   process-exporter: run
-  otel-collector: run
+  cadvisor: run
   prometheus: run

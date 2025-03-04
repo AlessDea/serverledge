@@ -37,14 +37,14 @@ func execute_policy() {
 		log.Println("Node in Full Performance State")
 		perform_on_exporter(ProcessExporter, config.FullPerformance.ProcessExporter)
 		perform_on_exporter(NodeExporter, config.FullPerformance.NodeExporter)
-		perform_on_exporter(OtelCollector, config.FullPerformance.OtelCollector)
+		perform_on_exporter(CAdvisor, config.FullPerformance.CAdvisor)
 		perform_on_exporter(Prometheus, config.FullPerformance.Prometheus)
 
 	case MsPartialPerf:
 		// for now stop Process and Otel
 		log.Println("Node in Partial Performance State")
 		perform_on_exporter(ProcessExporter, config.PartialPerformance.ProcessExporter)
-		perform_on_exporter(OtelCollector, config.PartialPerformance.OtelCollector)
+		perform_on_exporter(CAdvisor, config.PartialPerformance.CAdvisor)
 		perform_on_exporter(NodeExporter, config.PartialPerformance.NodeExporter)
 		perform_on_exporter(Prometheus, config.PartialPerformance.Prometheus)
 
@@ -53,7 +53,7 @@ func execute_policy() {
 		log.Println("Node in Disabled State")
 		perform_on_exporter(ProcessExporter, config.Disabled.ProcessExporter)
 		perform_on_exporter(NodeExporter, config.Disabled.NodeExporter)
-		perform_on_exporter(OtelCollector, config.Disabled.OtelCollector)
+		perform_on_exporter(CAdvisor, config.Disabled.CAdvisor)
 		perform_on_exporter(Prometheus, config.Disabled.Prometheus)
 
 	case MsIdle:
@@ -61,7 +61,7 @@ func execute_policy() {
 		log.Println("Node in Idle State")
 		perform_on_exporter(ProcessExporter, config.Idle.ProcessExporter)
 		perform_on_exporter(NodeExporter, config.Idle.NodeExporter)
-		perform_on_exporter(OtelCollector, config.Idle.OtelCollector)
+		perform_on_exporter(CAdvisor, config.Idle.CAdvisor)
 		perform_on_exporter(Prometheus, config.Idle.Prometheus)
 	}
 }
