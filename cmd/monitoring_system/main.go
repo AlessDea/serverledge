@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"net/rpc"
+	"os"
 	"strings"
 	"sync"
 	"time"
@@ -17,24 +18,51 @@ import (
 )
 
 var ImTheLeader bool
+var Reg *registration.Registry
 
 func main() {
+	configFileName := ""
+	if len(os.Args) > 1 {
+		configFileName = os.Args[1]
+	}
 
+	config.ReadConfiguration(configFileName)
 	var wg sync.WaitGroup
 	msUpdate := make(chan bully.NodeInfo)
 	bully.ElectionUpdate = make(chan string)
 	stopChan := make(chan struct{})
 	thisNodeInfo := bully.NodeInfo{}
+
+	// configure reads from etcd (no need to register to an area)
+	Reg = new(registration.Registry)
+	Reg.Area = config.GetString(config.REGISTRY_AREA, "ROME")
+
+	_, err := Reg.GetAll(true)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	node.NodeIdentifier, err = registration.GetNodeIDFromEtcd()
+	if node.NodeIdentifier == "" {
+		log.Println("This node there is not a serverledge node")
+	} else {
+		log.Printf("This node identifier is %s\n", node.NodeIdentifier)
+	}
+
+	// start the monitoring: we need it to discover servers in the area
+	err = registration.InitEdgeMonitoring(Reg, false)
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	// start the monitorin system engine
 	wg.Add(1)
 	go ms.Init(&wg, msUpdate)
 	log.Printf("Started the Local Monitoring System engine\n")
-	// let's wait for a channel return from the Monitoring system to get, updated Info
 
 	// start the distributed monitorin system engine
 	wg.Add(1)
 
-	// start the bully algo
 	go func() {
 		defer wg.Done()
 
@@ -49,16 +77,36 @@ func main() {
 			thisNodeInfo.SuperBully = false
 		}
 
-		cNodeName, cDist := getCloudNodeDistance(node.NodeIdentifier)
-		thisNodeInfo.CloudDist = cDist
-		log.Println("Nearest Cloud node:", cNodeName)
+		wg.Add(1)
+		mtx := new(sync.Mutex)
+		mtx.Lock()
+		go func() {
+			for {
+				bully.ThisNodeRWMtx.Lock()
+				cNodeName, cDist := getCloudNodeDistance(node.NodeIdentifier)
+				thisNodeInfo.CloudDist = cDist
 
-		if superBully && thisNodeInfo.CloudDist == -1 {
-			// this node can't be the master, it has not a cloud node as neighbour
-			superBully = false
-		}
+				if superBully && thisNodeInfo.CloudDist == -1 {
+					// this node can't be the master, it has not a cloud node as neighbour
+					superBully = false
+				}
+				bully.ThisNodeRWMtx.Unlock()
+				if len(Reg.NearbyServersMap) <= 0 || cNodeName == "" {
+					log.Println("No servers in the area")
+				} else {
+					log.Println("Found servers in the area: start the algorithm")
+					log.Printf("Nearest Cloud node:%s\n", cNodeName)
+					mtx.Unlock()
+				}
+				time.Sleep(30 * time.Second)
+			}
+		}()
 
 		// 2. Start the algorithm
+		// only if there are nodes in the area
+		mtx.Lock()
+		log.Println("Starting the algorithm")
+
 		bullyNode := bully.NewBullyNode(node.NodeIdentifier)
 		bullyNode.Info = thisNodeInfo
 
@@ -140,22 +188,26 @@ func main() {
 }
 
 func getCloudNodeDistance(s string) (string, time.Duration) {
-	registration.Reg.RwMtx.Lock()
-	defer registration.Reg.RwMtx.Unlock()
+	Reg.RwMtx.Lock()
+	defer Reg.RwMtx.Unlock()
 
 	// check if there is a cloud node in the Area of this node
-	if len(registration.Reg.NearbyServersMap) <= 0 {
+	if len(Reg.NearbyServersMap) <= 0 {
 		return "", -1
 	}
 
 	var max time.Duration = 0.0
 	var maxNodeID string = ""
-	for key, value := range registration.Reg.NearbyServersMap {
+	for key, value := range Reg.NearbyServersMap {
+		if key != node.NodeIdentifier {
+			log.Println("Server:", key)
+			bully.Add(key, value.Url)
+		}
 		if !strings.Contains(key, "cloud") {
 			continue
 		}
-		if registration.Reg.Client.DistanceTo(&value.Coordinates) > max {
-			max = registration.Reg.Client.DistanceTo(&value.Coordinates)
+		if Reg.Client.DistanceTo(&value.Coordinates) > max {
+			max = Reg.Client.DistanceTo(&value.Coordinates)
 			maxNodeID = key
 		}
 	}

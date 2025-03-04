@@ -44,7 +44,9 @@ func getClusterInfo(w http.ResponseWriter, r *http.Request) {
 }
 
 func getMetrics(w http.ResponseWriter, r *http.Request) {
-	queries := []string{"node_memory_MemAvailable_bytes", "node_memory_MemFree_bytes", "node_memory_MemTotal_bytes"}
+	queries := []string{"node_memory_MemAvailable_bytes", "node_memory_MemFree_bytes", "node_memory_MemTotal_bytes",
+		"node_cpu_seconds_total", "namedprocess_namegroup_cpu_seconds_total", "namedprocess_namegroup_memory_bytes",
+		"sedge_func_cpu_total", "sedge_func_mem_total", "sedge_exectime", "sedge_completed_total", "sedge_init_time", "sedge_is_cold_start", "sedge_response_time"}
 	metrics := make([]map[string]interface{}, 0)
 
 	for _, query := range queries {

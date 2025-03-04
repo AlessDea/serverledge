@@ -1,9 +1,9 @@
-cloud: true
 container.pool.memory: 4096
 etcd.address: "127.0.0.1:2379"
 scheduler.queue.capacity: 0
-metrics.enabled: false
+metrics.enabled: true
 container.expiration: 10
-registry.udp.port: 9988
-api.port: 1333
-metrics.export.port: 2113
+registry.udp.port: 9888
+api.port: 1433
+metrics.export.port: 2114
+dms.master: true

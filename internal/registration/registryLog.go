@@ -12,7 +12,7 @@ import (
 
 var Reg *Registry
 
-func InitEdgeMonitoring(r *Registry) (e error) {
+func InitEdgeMonitoring(r *Registry, sedgeNode bool) (e error) {
 	Reg = r
 	defaultConfig := vivaldi.DefaultConfig()
 	defaultConfig.Dimensionality = 3
@@ -28,7 +28,9 @@ func InitEdgeMonitoring(r *Registry) (e error) {
 	Reg.NearbyServersMap = make(map[string]*StatusInformation)
 
 	// start listening for incoming udp connections; use case: edge-nodes request for status infos
-	go UDPStatusServer()
+	if sedgeNode {
+		go UDPStatusServer()
+	}
 	//complete monitoring phase at startup
 	monitoring()
 	go runMonitor()
@@ -51,17 +53,41 @@ func runMonitor() {
 	}
 }
 
+func mergeMaps(map1, map2 map[string]string) map[string]string {
+	merged := make(map[string]string)
+
+	// Copia gli elementi della prima mappa
+	for k, v := range map1 {
+		merged[k] = v
+	}
+
+	// Copia gli elementi della seconda mappa (sovrascrive i duplicati)
+	for k, v := range map2 {
+		merged[k] = v
+	}
+
+	return merged
+}
+
 func monitoring() {
 	Reg.RwMtx.Lock()
 	defer Reg.RwMtx.Unlock()
 
 	// gets info from Etcd about other nodes
 	// TODO: check that nodes are filtered by geo zone
-	etcdServerMap, err := Reg.GetAll(false)
+	etcdServerMap, err := Reg.GetAll(true)
 	if err != nil {
 		log.Println(err)
 		return
 	}
+
+	etcdServerMapBis, err := Reg.GetAll(false)
+	if err != nil {
+		log.Println(err)
+		return
+	}
+
+	etcdServerMap = mergeMaps(etcdServerMap, etcdServerMapBis)
 
 	delete(etcdServerMap, Reg.Key) // not consider myself
 
@@ -96,7 +122,7 @@ func monitoring() {
 	}
 
 	// Updates NearbyServersMap with the N closest nodes from serverMap
-	getRank(2) //todo change this value
+	getRank(10) //todo change this value
 	log.Printf("Nearby map at the end of monitoring: %v\n", Reg.NearbyServersMap)
 }
 

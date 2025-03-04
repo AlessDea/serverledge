@@ -11,12 +11,7 @@ import (
 )
 
 // nodeAddressByID: It includes nodes currently in cluster TODO: it must not be hardcoded, get them from registry
-var nodeAddressByID = map[string]string{
-	"node-01": "node-01:6001",
-	"node-02": "node-02:6002",
-	"node-03": "node-03:6003",
-	"node-04": "node-04:6004",
-}
+var nodeAddressByID = make(map[string]string)
 
 type NodeInfo struct {
 	Status        string        // Normal, Degraded, Critical, Inactive
@@ -24,6 +19,8 @@ type NodeInfo struct {
 	AvailableRsrc float64       // percentage on RAM, CPU and Net I/O
 	SuperBully    bool          // if true the node has to be the master
 }
+
+var ThisNodeRWMtx trylock.Mutex
 
 var InfoRwMtx trylock.Mutex
 var ElectionUpdate chan string
@@ -74,7 +71,7 @@ func (node *BullyNode) ConnectToPeers() {
 		reply, _ := node.CommunicateWithPeer(rpcClient, pingMessage)
 
 		if reply.IsPongMessage() {
-			log.Println("%s got pong message from %s", node.ID, peerID)
+			log.Printf("%s got pong message from %s\n", node.ID, peerID)
 			node.Peers.Add(peerID, rpcClient, reply.info)
 		}
 	}
@@ -84,7 +81,7 @@ func (node *BullyNode) connect(peerAddr string) *rpc.Client {
 retry:
 	client, err := rpc.Dial("tcp", peerAddr)
 	if err != nil {
-		log.Println("Error dialing rpc dial %s", err.Error())
+		log.Printf("Error dialing rpc dial %s: %s\n", peerAddr, err.Error())
 		time.Sleep(50 * time.Millisecond)
 		goto retry
 	}
@@ -96,7 +93,7 @@ func (node *BullyNode) CommunicateWithPeer(RPCClient *rpc.Client, args Message) 
 
 	err := RPCClient.Call("BullyNode.HandleMessage", args, &reply)
 	if err != nil {
-		log.Println("Error calling HandleMessage %s", err.Error())
+		log.Printf("Error calling HandleMessage %s\n", err.Error())
 	}
 
 	return reply, err
@@ -110,7 +107,7 @@ func (node *BullyNode) HandleMessage(args Message, reply *Message) error {
 		reply.Type = ALIVE
 	case ELECTED:
 		leaderID := args.FromPeerID
-		log.Println("Election is done. %s has a new leader %s", node.ID, leaderID)
+		log.Printf("Election is done. %s has a new leader %s\n", node.ID, leaderID)
 		node.eventBus.Emit(event.LeaderElected, leaderID)
 		reply.Type = OK
 	case PING:
@@ -136,7 +133,7 @@ func (node *BullyNode) Elect(update chan string) {
 			continue
 		}
 
-		log.Println("%s send ELECTION message to peer %s", node.ID, peer.ID)
+		log.Printf("%s send ELECTION message to peer %s\n", node.ID, peer.ID)
 		electionMessage := Message{FromPeerID: node.ID, Type: ELECTION}
 
 		reply, _ := node.CommunicateWithPeer(peer.RPCClient, electionMessage)
@@ -152,7 +149,7 @@ func (node *BullyNode) Elect(update chan string) {
 		leaderID = node.ID
 		electedMessage := Message{FromPeerID: leaderID, Type: ELECTED}
 		node.BroadcastMessage(electedMessage)
-		log.Println("%s is a new leader", node.ID)
+		log.Printf("%s is a new leader\n", node.ID)
 		update <- leaderID
 		return
 	}
@@ -161,7 +158,7 @@ func (node *BullyNode) Elect(update chan string) {
 		leaderID = node.ID
 		electedMessage := Message{FromPeerID: leaderID, Type: ELECTED}
 		node.BroadcastMessage(electedMessage)
-		log.Println("%s is a new leader", node.ID)
+		log.Printf("%s is a new leader\n", node.ID)
 		update <- leaderID
 		return
 	}
@@ -183,21 +180,21 @@ func (node *BullyNode) PingLeaderContinuously(_ string, payload any) {
 ping:
 	leader := node.Peers.Get(leaderID)
 	if leader == nil {
-		log.Println("%s, %s, %s", node.ID, leaderID, node.Peers.ToIDs())
+		log.Printf("%s, %s, %s\n", node.ID, leaderID, node.Peers.ToIDs())
 		return
 	}
 
 	pingMessage := Message{FromPeerID: node.ID, Type: PING}
 	reply, err := node.CommunicateWithPeer(leader.RPCClient, pingMessage)
 	if err != nil {
-		log.Println("Leader is down, new election about to start!")
+		log.Printf("Leader is down, new election about to start!\n")
 		node.Peers.Delete(leaderID)
 		node.Elect(ElectionUpdate)
 		return
 	}
 
 	if reply.IsPongMessage() {
-		log.Println("Leader %s sent PONG message", reply.FromPeerID)
+		log.Printf("Leader %s sent PONG message\n", reply.FromPeerID)
 		time.Sleep(3 * time.Second)
 		goto ping
 	}
@@ -257,4 +254,8 @@ func (i NodeInfo) checkElectionConditions(thisID string, other Peer) bool {
 
 func (node *BullyNode) IsItself(id string) bool {
 	return node.ID == id
+}
+
+func Add(id string, url string) {
+	nodeAddressByID[id] = url
 }

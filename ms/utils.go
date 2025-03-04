@@ -3,6 +3,7 @@ package ms
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 
 	"gopkg.in/yaml.v2"
 )
@@ -87,6 +88,13 @@ func setDefaultConfig(config *Config) {
 // TODO: check if the percentages are increasing, if not return error
 func loadThresholdsConfig(filename string) error {
 	// Open the YAML file
+	ex, err := os.Executable()
+	if err != nil {
+		panic(err)
+	}
+	exPath := filepath.Dir(ex)
+	fmt.Println(exPath)
+
 	file, err := os.Open(filename)
 	if err != nil {
 		return fmt.Errorf("failed to open file: %v", err)

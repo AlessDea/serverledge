@@ -1,6 +1,7 @@
 package registration
 
 import (
+	"encoding/json"
 	"fmt"
 	"log"
 	"strconv"
@@ -44,6 +45,12 @@ func (r *Registry) RegisterToEtcd(hostport string) (string, error) {
 	log.Printf("Registration key: %s\n", r.Key)
 	// save couple (id, hostport) to the correct Area-dir on etcd
 	_, err = etcdClient.Put(ctx, r.Key, hostport, clientv3.WithLease(resp.ID))
+	if err != nil {
+		log.Fatal(IdRegistrationErr)
+		return "", IdRegistrationErr
+	}
+
+	_, err = etcdClient.Put(ctx, "mykey/"+r.Key, hostport, clientv3.WithLease(resp.ID))
 	if err != nil {
 		log.Fatal(IdRegistrationErr)
 		return "", IdRegistrationErr
@@ -164,4 +171,57 @@ func (r *Registry) Deregister() (e error) {
 
 	log.Println("Deregister : " + r.Key)
 	return nil
+}
+
+func (r *Registry) saveServersMapToEtcd() (e error) {
+	etcdClient, err := utils.GetEtcdClient()
+	if err != nil {
+		log.Fatal(UnavailableClientErr)
+		return UnavailableClientErr
+	}
+
+	data, err := json.Marshal(Reg.serversMap)
+	if err != nil {
+		return fmt.Errorf("Error serializing serversMap: %s\n", err)
+	}
+
+	_, err = etcdClient.Put(context.Background(), "/serverledge/serversMap", string(data))
+	if err != nil {
+		return fmt.Errorf("Error updating serversMap su Etcd: %s\n", err)
+	}
+	return nil
+}
+
+func GetNodeIDFromEtcd() (string, error) {
+	etcdClient, err := utils.GetEtcdClient() // Ottieni il client etcd
+	if err != nil {
+		log.Fatal("Error connecting to etcd:", err)
+		return "", err
+	}
+
+	// Prefisso dove abbiamo salvato l'ID
+	prefix := "mykey/"
+
+	// Creiamo un contesto con timeout per la richiesta
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
+
+	// Eseguiamo la query per recuperare tutte le chiavi con il prefisso "mykey/"
+	resp, err := etcdClient.Get(ctx, prefix, clientv3.WithPrefix())
+	if err != nil {
+		log.Fatal("Error retrieving ID from etcd:", err)
+		return "", err
+	}
+
+	// Se non troviamo nulla, restituiamo un errore
+	if len(resp.Kvs) == 0 {
+		log.Println("No node ID found in etcd under", prefix)
+		return "", fmt.Errorf("no node ID found")
+	}
+
+	// Supponiamo che ci sia un solo nodo registrato, prendiamo il primo valore
+	nodeID := string(resp.Kvs[0].Value)
+	fmt.Println("Found Node ID:", nodeID)
+
+	return nodeID, nil
 }

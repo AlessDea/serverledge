@@ -158,7 +158,7 @@ func main() {
 	go scheduling.Run(schedulingPolicy)
 
 	if !isInCloud {
-		err = registration.InitEdgeMonitoring(registry)
+		err = registration.InitEdgeMonitoring(registry, true)
 		if err != nil {
 			log.Fatal(err)
 		}
