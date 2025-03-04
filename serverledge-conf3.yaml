@@ -7,3 +7,5 @@ registry.udp.port: 9888
 api.port: 1433
 metrics.export.port: 2114
 dms.master: true
+dms.bully.algo.port: 7879
+

@@ -3,13 +3,13 @@ package ms
 type NodeState string // State of the node
 type MSState string   // State of the monitoryng system
 
-var startScriptPath string = "../scripts/exporters_controller/start_exporter.sh"
-var stopScriptPath string = "../scripts/exporters_controller/start_exporter.sh"
-var pauseScriptPath string = "../scripts/exporters_controller/pause_exporter.sh"
-var unpauseScriptPath string = "../scripts/exporters_controller/unpause_exporter.sh"
+var startScriptPath string = "./ms/exporters_controller/start_exporter.sh"
+var stopScriptPath string = "./ms/exporters_controller/start_exporter.sh"
+var pauseScriptPath string = "./ms/exporters_controller/pause_exporter.sh"
+var unpauseScriptPath string = "./ms/exporters_controller/unpause_exporter.sh"
 
-var thresholdsConfigPath string = "/etc/serverledge/thresholds_config.yml"
-var policyConfigPath string = "/etc/serverledge/policy_config.yml"
+var thresholdsConfigPath string = "./ms/thresholds_config.yml"
+var policyConfigPath string = "./ms/policy_config.yml"
 
 var state MSState = MsFullPerf // state of the MS
 var prevState MSState = ""

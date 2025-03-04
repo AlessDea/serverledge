@@ -76,3 +76,5 @@ const METRICS_EXPORT_PORT = "metrics.export.port"
 
 // Force the node to be the master
 const IM_THE_MASTER = "dms.master"
+
+const DMS_BULLT_PORT = "dms.bully.algo.port"

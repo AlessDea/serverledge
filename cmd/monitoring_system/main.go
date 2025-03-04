@@ -4,7 +4,9 @@ import (
 	"fmt"
 	"log"
 	"net/rpc"
+	"net/url"
 	"os"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -15,6 +17,7 @@ import (
 	"github.com/grussorusso/serverledge/internal/node"
 	"github.com/grussorusso/serverledge/internal/registration"
 	"github.com/grussorusso/serverledge/ms"
+	"github.com/grussorusso/serverledge/utils"
 )
 
 var ImTheLeader bool
@@ -33,7 +36,7 @@ func main() {
 	stopChan := make(chan struct{})
 	thisNodeInfo := bully.NodeInfo{}
 
-	// configure reads from etcd (no need to register to an area)
+	// configure reading from etcd (no need to register to an area)
 	Reg = new(registration.Registry)
 	Reg.Area = config.GetString(config.REGISTRY_AREA, "ROME")
 
@@ -42,9 +45,22 @@ func main() {
 		log.Fatal(err)
 	}
 
-	node.NodeIdentifier, err = registration.GetNodeIDFromEtcd()
-	if node.NodeIdentifier == "" {
-		log.Println("This node there is not a serverledge node")
+	superBully := config.GetBool(config.IM_THE_MASTER, false)
+
+	// node.NodeIdentifier, err = registration.GetNodeIDFromEtcd()
+	// if node.NodeIdentifier == "" {
+	// 	log.Println("This node there is not a serverledge node")
+	// } else {
+	// 	log.Printf("This node identifier is %s\n", node.NodeIdentifier)
+	// }
+	node.NodeIdentifier, err = Reg.GetNodeIDFromEtcd(utils.GetIpAddress().String())
+	if err != nil {
+		log.Println("This node is not a serverledge")
+		// the only reason for this istance of monitoring system to be alive is to be the master, so force it.
+		if !superBully {
+			log.Println("Node not running to be the master. Exiting")
+			os.Exit(0)
+		}
 	} else {
 		log.Printf("This node identifier is %s\n", node.NodeIdentifier)
 	}
@@ -68,7 +84,6 @@ func main() {
 
 		// 1. Get the information needed
 		// read the configuration: if this node has to be the leader then
-		superBully := config.GetBool(config.IM_THE_MASTER, false)
 		if superBully {
 			thisNodeInfo.SuperBully = true
 			// wait for the ms to receive the information needed
@@ -78,25 +93,28 @@ func main() {
 		}
 
 		wg.Add(1)
+		startedFlag := false
 		mtx := new(sync.Mutex)
 		mtx.Lock()
 		go func() {
 			for {
-				bully.ThisNodeRWMtx.Lock()
 				cNodeName, cDist := getCloudNodeDistance(node.NodeIdentifier)
+				bully.ThisNodeRWMtx.Lock()
 				thisNodeInfo.CloudDist = cDist
+				bully.ThisNodeRWMtx.Unlock()
 
 				if superBully && thisNodeInfo.CloudDist == -1 {
 					// this node can't be the master, it has not a cloud node as neighbour
 					superBully = false
 				}
-				bully.ThisNodeRWMtx.Unlock()
 				if len(Reg.NearbyServersMap) <= 0 || cNodeName == "" {
-					log.Println("No servers in the area")
+					log.Println("No Cloud servers in the area")
 				} else {
 					log.Println("Found servers in the area: start the algorithm")
 					log.Printf("Nearest Cloud node:%s\n", cNodeName)
-					mtx.Unlock()
+					if !startedFlag {
+						mtx.Unlock()
+					}
 				}
 				time.Sleep(30 * time.Second)
 			}
@@ -105,36 +123,42 @@ func main() {
 		// 2. Start the algorithm
 		// only if there are nodes in the area
 		mtx.Lock()
+		startedFlag = true
+		mtx.Unlock()
 		log.Println("Starting the algorithm")
 
 		bullyNode := bully.NewBullyNode(node.NodeIdentifier)
 		bullyNode.Info = thisNodeInfo
 
-		listener, err := bullyNode.NewListener()
-		if err != nil {
-			log.Println(err)
-		}
-		defer listener.Close()
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			listener, err := bullyNode.NewListener()
+			if err != nil {
+				//log.Println(err)
+			}
+			defer listener.Close()
 
-		rpcServer := rpc.NewServer()
-		rpcServer.Register(bullyNode)
+			rpcServer := rpc.NewServer()
+			rpcServer.Register(bullyNode)
 
-		go rpcServer.Accept(listener)
+			go rpcServer.Accept(listener)
 
-		bullyNode.ConnectToPeers()
-		log.Println("%s is aware of own peers %s", bullyNode.ID, bullyNode.Peers.ToIDs())
+			bullyNode.ConnectToPeers()
+			log.Printf("%s is aware of own peers %s\n", bullyNode.ID, bullyNode.Peers.ToIDs())
 
-		warmupTime := 5 * time.Second
-		time.Sleep(warmupTime)
+			warmupTime := 5 * time.Second
+			time.Sleep(warmupTime)
 
-		bullyNode.Elect(bully.ElectionUpdate)
-		leader := <-bully.ElectionUpdate
-		if strings.Compare(leader, node.NodeIdentifier) == 0 {
-			// this node is the master
-			ImTheLeader = true
-			log.Println("This node is the leader:", leader)
-			go dms.Init(stopChan)
-		}
+			bullyNode.Elect(bully.ElectionUpdate)
+			leader := <-bully.ElectionUpdate
+			if strings.Compare(leader, node.NodeIdentifier) == 0 {
+				// this node is the master
+				ImTheLeader = true
+				log.Println("This node is the leader:", leader)
+				go dms.Init(stopChan)
+			}
+		}()
 
 		// wait for updates from monitoring system and election algorithm
 		for {
@@ -187,6 +211,18 @@ func main() {
 
 }
 
+func changePort(rawURL string, newPort string) (string, error) {
+	parsedURL, err := url.Parse(rawURL)
+	if err != nil {
+		return "", err
+	}
+
+	// Cambia la porta
+	parsedURL.Host = parsedURL.Hostname() + ":" + newPort
+
+	return parsedURL.String(), nil
+}
+
 func getCloudNodeDistance(s string) (string, time.Duration) {
 	Reg.RwMtx.Lock()
 	defer Reg.RwMtx.Unlock()
@@ -199,10 +235,12 @@ func getCloudNodeDistance(s string) (string, time.Duration) {
 	var max time.Duration = 0.0
 	var maxNodeID string = ""
 	for key, value := range Reg.NearbyServersMap {
-		if key != node.NodeIdentifier {
-			log.Println("Server:", key)
-			bully.Add(key, value.Url)
-		}
+
+		log.Println("Server:", key)
+		parsedURL, _ := url.Parse(value.Url)
+		url := string(parsedURL.Hostname()) + ":" + strconv.Itoa(config.GetInt(config.DMS_BULLT_PORT, 7878))
+		bully.Add(key, url)
+
 		if !strings.Contains(key, "cloud") {
 			continue
 		}

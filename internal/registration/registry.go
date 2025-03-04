@@ -1,10 +1,10 @@
 package registration
 
 import (
-	"encoding/json"
 	"fmt"
 	"log"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/grussorusso/serverledge/internal/config"
@@ -50,11 +50,11 @@ func (r *Registry) RegisterToEtcd(hostport string) (string, error) {
 		return "", IdRegistrationErr
 	}
 
-	_, err = etcdClient.Put(ctx, "mykey/"+r.Key, hostport, clientv3.WithLease(resp.ID))
-	if err != nil {
-		log.Fatal(IdRegistrationErr)
-		return "", IdRegistrationErr
-	}
+	// _, err = etcdClient.Put(ctx, "mykey/"+r.Key, hostport, clientv3.WithLease(resp.ID))
+	// if err != nil {
+	// 	log.Fatal(IdRegistrationErr)
+	// 	return "", IdRegistrationErr
+	// }
 
 	cancelCtx, _ := context.WithCancel(etcdClient.Ctx())
 
@@ -173,55 +173,29 @@ func (r *Registry) Deregister() (e error) {
 	return nil
 }
 
-func (r *Registry) saveServersMapToEtcd() (e error) {
+func (r *Registry) GetNodeIDFromEtcd(myurl string) (string, error) {
+	var baseDir string
+	// baseDir = fmt.Sprintf("%s/%s/%s/", BASEDIR, "cloud", r.Area)
+	baseDir = r.getEtcdKey("")
+
+	ctx, _ := context.WithTimeout(context.Background(), 1*time.Second)
 	etcdClient, err := utils.GetEtcdClient()
 	if err != nil {
 		log.Fatal(UnavailableClientErr)
-		return UnavailableClientErr
+		return "", UnavailableClientErr
 	}
-
-	data, err := json.Marshal(Reg.serversMap)
+	//retrieve all url of the other servers under my Area
+	resp, err := etcdClient.Get(ctx, baseDir, clientv3.WithPrefix())
 	if err != nil {
-		return fmt.Errorf("Error serializing serversMap: %s\n", err)
+		return "", fmt.Errorf("Could not read from etcd: %v", err)
 	}
 
-	_, err = etcdClient.Put(context.Background(), "/serverledge/serversMap", string(data))
-	if err != nil {
-		return fmt.Errorf("Error updating serversMap su Etcd: %s\n", err)
-	}
-	return nil
-}
-
-func GetNodeIDFromEtcd() (string, error) {
-	etcdClient, err := utils.GetEtcdClient() // Ottieni il client etcd
-	if err != nil {
-		log.Fatal("Error connecting to etcd:", err)
-		return "", err
+	for _, s := range resp.Kvs {
+		log.Printf("server found: %s", string(s.Value))
+		if strings.Contains(string(s.Value), myurl) {
+			return string(s.Key), nil
+		}
 	}
 
-	// Prefisso dove abbiamo salvato l'ID
-	prefix := "mykey/"
-
-	// Creiamo un contesto con timeout per la richiesta
-	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
-	defer cancel()
-
-	// Eseguiamo la query per recuperare tutte le chiavi con il prefisso "mykey/"
-	resp, err := etcdClient.Get(ctx, prefix, clientv3.WithPrefix())
-	if err != nil {
-		log.Fatal("Error retrieving ID from etcd:", err)
-		return "", err
-	}
-
-	// Se non troviamo nulla, restituiamo un errore
-	if len(resp.Kvs) == 0 {
-		log.Println("No node ID found in etcd under", prefix)
-		return "", fmt.Errorf("no node ID found")
-	}
-
-	// Supponiamo che ci sia un solo nodo registrato, prendiamo il primo valore
-	nodeID := string(resp.Kvs[0].Value)
-	fmt.Println("Found Node ID:", nodeID)
-
-	return nodeID, nil
+	return "", nil
 }
