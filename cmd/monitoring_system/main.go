@@ -46,12 +46,6 @@ func main() {
 
 	superBully := config.GetBool(config.IM_THE_MASTER, false)
 
-	// node.NodeIdentifier, err = registration.GetNodeIDFromEtcd()
-	// if node.NodeIdentifier == "" {
-	// 	log.Println("This node there is not a serverledge node")
-	// } else {
-	// 	log.Printf("This node identifier is %s\n", node.NodeIdentifier)
-	// }
 	node.NodeIdentifier, err = Reg.GetNodeIDFromEtcd(utils.GetIpAddress().String())
 	if err != nil {
 		log.Println("This node is not a serverledge node")
@@ -62,6 +56,7 @@ func main() {
 		}
 	} else {
 		log.Printf("This node identifier is %s\n", node.NodeIdentifier)
+		log.Printf("It has to be the master: %t\n", superBully)
 	}
 
 	Reg.Key = node.NodeIdentifier
@@ -85,9 +80,10 @@ func main() {
 		// 1. Get the information needed
 		// read the configuration: if this node has to be the leader then
 		if superBully {
-			thisNodeInfo.SuperBully = true
 			// wait for the ms to receive the information needed
 			thisNodeInfo = <-msUpdate
+			thisNodeInfo.SuperBully = true
+
 		} else {
 			thisNodeInfo.SuperBully = false
 		}
@@ -104,7 +100,7 @@ func main() {
 				bully.ThisNodeRWMtx.Unlock()
 
 				if superBully && thisNodeInfo.CloudDist == -1 {
-					// this node can't be the master, it has not a cloud node as neighbour
+					log.Println("this node can't be the master, it has not a cloud node as neighbour")
 					superBully = false
 				}
 				if len(Reg.NearbyServersMap) <= 0 || cNodeName == "" {
@@ -184,7 +180,7 @@ func main() {
 						// still the leader: do nothing
 					} else {
 						ImTheLeader = true
-						dms.Init(stopChan)
+						go dms.Init(stopChan)
 					}
 				} else {
 					log.Println("New leader:", leader)

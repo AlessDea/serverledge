@@ -4,6 +4,7 @@ import (
 	"log"
 	"net"
 	"net/rpc"
+	"sort"
 	"time"
 
 	"github.com/LK4D4/trylock"
@@ -121,13 +122,15 @@ func (node *BullyNode) Elect(update chan string) {
 	isHighestRankedBullyNodeAvailable := false
 	var leaderID string
 	peers := node.Peers.ToList()
+	sort.Sort(ByCDist(peers)) // sort the peers by cloud distance
 	for i := range peers {
 		peer := peers[i]
 
-		if node.Info.SuperBully {
-			// force to be the leader
-			continue
-		}
+		// if node.Info.SuperBully {
+		// 	// force to be the leader
+		// 	continue
+		// }
+		log.Printf("Peer %s", peer.ID)
 
 		if node.IsRankedHigherThan(peer) {
 			continue
@@ -139,20 +142,21 @@ func (node *BullyNode) Elect(update chan string) {
 		reply, _ := node.CommunicateWithPeer(peer.RPCClient, electionMessage)
 
 		if reply.IsAliveMessage() {
+			log.Printf("Peer %s is alive", peer.ID)
 			isHighestRankedBullyNodeAvailable = true
 			leaderID = peer.ID
 		}
 	}
 
-	if node.Info.SuperBully {
-		// force to be the leader
-		leaderID = node.ID
-		electedMessage := Message{FromPeerID: leaderID, Type: ELECTED}
-		node.BroadcastMessage(electedMessage)
-		log.Printf("%s is a new leader\n", node.ID)
-		update <- leaderID
-		return
-	}
+	// if node.Info.SuperBully {
+	// 	// force to be the leader
+	// 	leaderID = node.ID
+	// 	electedMessage := Message{FromPeerID: leaderID, Type: ELECTED}
+	// 	node.BroadcastMessage(electedMessage)
+	// 	log.Printf("%s is a new leader\n", node.ID)
+	// 	update <- leaderID
+	// 	return
+	// }
 
 	if !isHighestRankedBullyNodeAvailable {
 		leaderID = node.ID
@@ -207,6 +211,10 @@ ping:
 // new implementation
 func (node *BullyNode) IsRankedHigherThan(peer Peer) bool {
 	thisNode := node.Info
+	if node.Info.SuperBully {
+		log.Printf("This node is Superbully")
+		return true
+	}
 	if thisNode.hasCloudNeighbour() && (thisNode.Status == "Normal" || thisNode.Status == "Degraded") {
 		// thisNode has the criteria to get elected
 		return thisNode.checkElectionConditions(node.ID, peer)
@@ -221,7 +229,13 @@ func (i NodeInfo) checkElectionConditions(thisID string, other Peer) bool {
 	defer InfoRwMtx.Unlock()
 	thisNode := i
 	otherNode := other.info
+	log.Printf("Election Algo: this node: %s - %2.f - %ld\n", i.Status, i.AvailableRsrc, i.CloudDist)
+	log.Printf("Election Algo: other node: %s - %2.f - %ld\n", otherNode.Status, otherNode.AvailableRsrc, otherNode.CloudDist)
 	// Primary comparison: status and cloudDist
+	if otherNode.SuperBully {
+		log.Printf("This node is Superbully")
+		return false
+	}
 	if thisNode.Status > otherNode.Status && thisNode.CloudDist < otherNode.CloudDist {
 		return true
 	}

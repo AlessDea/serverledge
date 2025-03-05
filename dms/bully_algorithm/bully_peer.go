@@ -11,6 +11,12 @@ type Peer struct {
 	RPCClient *rpc.Client
 }
 
+type ByCDist []Peer
+
+func (a ByCDist) Len() int           { return len(a) }
+func (a ByCDist) Less(i, j int) bool { return a[i].info.CloudDist < a[j].info.CloudDist }
+func (a ByCDist) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
+
 type Peers struct {
 	*sync.RWMutex
 	peerByID map[string]*Peer
