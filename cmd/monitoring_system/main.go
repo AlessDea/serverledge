@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"log"
 	"net/rpc"
 	"net/url"
@@ -133,6 +132,7 @@ func main() {
 
 		wg.Add(1)
 		go func() {
+			log.Println("BULLY START")
 			defer wg.Done()
 			listener, err := bullyNode.NewListener()
 			if err != nil {
@@ -145,6 +145,7 @@ func main() {
 
 			go rpcServer.Accept(listener)
 
+			log.Println("BULLY CONNECTING TO PEERS")
 			bullyNode.ConnectToPeers()
 			log.Printf("%s is aware of own peers %s\n", bullyNode.ID, bullyNode.Peers.ToIDs())
 
@@ -159,6 +160,7 @@ func main() {
 				log.Println("This node is the leader:", leader)
 				go dms.Init(stopChan)
 			}
+			log.Println("BULLY END")
 		}()
 
 		// wait for updates from monitoring system and election algorithm
@@ -166,11 +168,11 @@ func main() {
 			select {
 			case update, ok := <-msUpdate:
 				if !ok {
-					fmt.Println("Closed Channel")
+					log.Println("Closed Channel")
 					break
 				}
 				if !superBully {
-					fmt.Println("received:", update)
+					log.Println("received:", update)
 					thisNodeInfo = update
 				}
 				break
@@ -196,7 +198,7 @@ func main() {
 				}
 				break
 			default:
-				fmt.Println("No updates from MS")
+				log.Println("No updates from MS")
 				time.Sleep(3 * time.Second) // wait 3s
 				break
 			}
