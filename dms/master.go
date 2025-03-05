@@ -98,7 +98,7 @@ func retriever(stopChan chan struct{}) {
 				}
 			}
 			// wg.Wait() // useless because we wait for all the routines writing into the channel
-			// time.Sleep(1 * time.Second)
+			time.Sleep(5 * time.Second)
 		}
 	}()
 	select {
