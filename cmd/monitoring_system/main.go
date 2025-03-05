@@ -55,7 +55,7 @@ func main() {
 	// }
 	node.NodeIdentifier, err = Reg.GetNodeIDFromEtcd(utils.GetIpAddress().String())
 	if err != nil {
-		log.Println("This node is not a serverledge")
+		log.Println("This node is not a serverledge node")
 		// the only reason for this istance of monitoring system to be alive is to be the master, so force it.
 		if !superBully {
 			log.Println("Node not running to be the master. Exiting")

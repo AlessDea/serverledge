@@ -4,7 +4,6 @@ import (
 	"log"
 	"reflect"
 	"sort"
-	"strings"
 	"time"
 
 	"github.com/grussorusso/serverledge/internal/config"
@@ -29,7 +28,7 @@ func InitEdgeMonitoring(r *Registry, sedgeNode bool) (e error) {
 	Reg.NearbyServersMap = make(map[string]*StatusInformation)
 
 	// start listening for incoming udp connections; use case: edge-nodes request for status infos
-	if sedgeNode {
+	if sedgeNode { // to exclude the monitoring_system
 		go UDPStatusServer()
 	}
 	//complete monitoring phase at startup
@@ -93,9 +92,6 @@ func monitoring() {
 	delete(etcdServerMap, Reg.Key) // not consider myself
 
 	for key, url := range etcdServerMap {
-		if strings.Contains(key, "cloud") {
-			continue
-		}
 		oldInfo, ok := Reg.serversMap[key]
 
 		ip := url[7 : len(url)-5]
@@ -121,6 +117,7 @@ func monitoring() {
 	for key := range Reg.serversMap {
 		_, ok := etcdServerMap[key]
 		if !ok {
+			log.Printf("deleting key %s\n", key)
 			delete(Reg.serversMap, key)
 		}
 	}
@@ -164,9 +161,6 @@ func nearbyMonitoring() {
 	Reg.RwMtx.Lock()
 	defer Reg.RwMtx.Unlock()
 	for key, info := range Reg.NearbyServersMap {
-		if strings.Contains(key, "cloud") {
-			continue
-		}
 		oldInfo, ok := Reg.serversMap[key]
 
 		ip := info.Url[7 : len(info.Url)-5]

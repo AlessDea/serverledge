@@ -1,11 +1,10 @@
 container.pool.memory: 4096
-etcd.address: "127.0.0.1:2379"
+etcd.address: "192.168.122.31:2379"
 scheduler.queue.capacity: 0
 metrics.enabled: true
 container.expiration: 10
 registry.udp.port: 9888
 api.port: 1433
-metrics.export.port: 2114
-dms.master: true
-dms.bully.algo.port: 7879
+metrics.export.port: 2112
+dms.bully.algo.port: 7878
 
