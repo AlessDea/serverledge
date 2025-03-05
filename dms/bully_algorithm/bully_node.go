@@ -113,6 +113,7 @@ func (node *BullyNode) HandleMessage(args Message, reply *Message) error {
 		reply.Type = OK
 	case PING:
 		reply.Type = PONG
+		reply.info = node.Info
 	}
 
 	return nil
