@@ -79,30 +79,34 @@ retry:
 
 func retriever(stopChan chan struct{}) {
 	var wg sync.WaitGroup
-	for {
-		c := make(chan result)
-		defer close(c)
-		for key, _ := range NodesMetricsMap {
-			wg.Add(1)
-			go retrieveMetrics(key, c)
 
-		}
-		for i := 0; i < len(NodesMetricsMap); i++ {
-			m := <-c
-			if m.valid {
-				NodesMetricsMap[m.node] = m.metrics
-			} else {
-				log.Println("DMS: Error during metrics retrieve")
+	go func() {
+		for {
+			c := make(chan result)
+			defer close(c)
+			for key, _ := range NodesMetricsMap {
+				wg.Add(1)
+				go retrieveMetrics(key, c)
+
 			}
+			for i := 0; i < len(NodesMetricsMap); i++ {
+				m := <-c
+				if m.valid {
+					NodesMetricsMap[m.node] = m.metrics
+				} else {
+					log.Println("DMS: Error during metrics retrieve")
+				}
+			}
+			// wg.Wait() // useless because we wait for all the routines writing into the channel
+			// time.Sleep(1 * time.Second)
 		}
-		// wg.Wait() // useless because we wait for all the routines writing into the channel
-		// time.Sleep(1 * time.Second)
-		select {
-		case <-stopChan: // Received stop signal
-			fmt.Println("Received stop signal")
-			return
-		}
+	}()
+	select {
+	case <-stopChan: // Received stop signal
+		fmt.Println("Received stop signal")
+		return
 	}
+
 }
 
 func retrieveMetrics(n Node, ch chan result) {
