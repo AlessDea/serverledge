@@ -111,7 +111,7 @@ func main() {
 				if len(Reg.NearbyServersMap) <= 0 || cNodeName == "" {
 					log.Println("No Cloud servers in the area")
 				} else {
-					log.Println("Found servers in the area: start the algorithm")
+					log.Println("Found Cloud servers in the area")
 					log.Printf("Nearest Cloud node:%s\n", cNodeName)
 					if !startedFlag {
 						mtx.Unlock()
@@ -136,7 +136,7 @@ func main() {
 			defer wg.Done()
 			listener, err := bullyNode.NewListener()
 			if err != nil {
-				//log.Println(err)
+				log.Println(err)
 			}
 			defer listener.Close()
 
