@@ -240,11 +240,12 @@ func getCloudNodeDistance(s string) (string, time.Duration) {
 	for key, value := range Reg.NearbyServersMap {
 
 		log.Println("Server:", key)
-		parsedURL, _ := url.Parse(value.Url)
-		url := string(parsedURL.Hostname()) + ":" + strconv.Itoa(config.GetInt(config.DMS_BULLY_PORT, 7878))
-		bully.Add(key, url)
 
 		if !strings.Contains(key, "cloud") {
+			// a cloud node is not involved in master election
+			parsedURL, _ := url.Parse(value.Url)
+			url := string(parsedURL.Hostname()) + ":" + strconv.Itoa(config.GetInt(config.DMS_BULLY_PORT, 7878))
+			bully.Add(key, url)
 			continue
 		}
 		if Reg.Client.DistanceTo(&value.Coordinates) > max {
