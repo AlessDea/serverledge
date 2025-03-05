@@ -127,7 +127,7 @@ func main() {
 		mtx.Unlock()
 		log.Println("Starting the algorithm")
 
-		bullyNode := bully.NewBullyNode(node.NodeIdentifier, utils.GetIpAddress().String()+strconv.Itoa(config.GetInt(config.DMS_BULLY_PORT, 7878)))
+		bullyNode := bully.NewBullyNode(node.NodeIdentifier, utils.GetIpAddress().String()+":"+strconv.Itoa(config.GetInt(config.DMS_BULLY_PORT, 7878)))
 		bullyNode.Info = thisNodeInfo
 
 		wg.Add(1)
