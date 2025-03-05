@@ -127,7 +127,7 @@ func main() {
 		mtx.Unlock()
 		log.Println("Starting the algorithm")
 
-		bullyNode := bully.NewBullyNode(node.NodeIdentifier)
+		bullyNode := bully.NewBullyNode(node.NodeIdentifier, utils.GetIpAddress().String()+strconv.Itoa(config.GetInt(config.DMS_BULLY_PORT, 7878)))
 		bullyNode.Info = thisNodeInfo
 
 		wg.Add(1)
@@ -241,7 +241,7 @@ func getCloudNodeDistance(s string) (string, time.Duration) {
 
 		log.Println("Server:", key)
 		parsedURL, _ := url.Parse(value.Url)
-		url := string(parsedURL.Hostname()) + ":" + strconv.Itoa(config.GetInt(config.DMS_BULLT_PORT, 7878))
+		url := string(parsedURL.Hostname()) + ":" + strconv.Itoa(config.GetInt(config.DMS_BULLY_PORT, 7878))
 		bully.Add(key, url)
 
 		if !strings.Contains(key, "cloud") {

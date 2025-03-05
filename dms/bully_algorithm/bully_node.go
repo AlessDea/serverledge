@@ -41,10 +41,10 @@ type BullyNode struct {
 	eventBus event.Bus
 }
 
-func NewBullyNode(nodeID string) *BullyNode {
+func NewBullyNode(nodeID string, hostport string) *BullyNode {
 	node := &BullyNode{
 		ID:   nodeID,
-		Addr: nodeAddressByID[nodeID],
+		Addr: hostport,
 		// add info
 		Peers:    NewPeers(),
 		eventBus: event.NewBus(),
