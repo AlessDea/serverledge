@@ -212,7 +212,7 @@ ping:
 // new implementation
 func (node *BullyNode) IsRankedHigherThan(peer Peer) bool {
 	thisNode := node.Info
-	if node.Info.SuperBully {
+	if node.Info.SuperBully && !peer.info.SuperBully {
 		log.Printf("This node is Superbully")
 		return true
 	}
@@ -233,8 +233,8 @@ func (i NodeInfo) checkElectionConditions(thisID string, other Peer) bool {
 	log.Printf("Election Algo: this node: %s - %2.f - %ld\n", i.Status, i.AvailableRsrc, i.CloudDist)
 	log.Printf("Election Algo: other node: %s - %2.f - %ld\n", otherNode.Status, otherNode.AvailableRsrc, otherNode.CloudDist)
 	// Primary comparison: status and cloudDist
-	if otherNode.SuperBully {
-		log.Printf("This node is Superbully")
+	if otherNode.SuperBully && !thisNode.SuperBully {
+		log.Printf("Other node is Superbully")
 		return false
 	}
 	if thisNode.Status > otherNode.Status && thisNode.CloudDist < otherNode.CloudDist {

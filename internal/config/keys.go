@@ -74,6 +74,9 @@ const TRACING_OUTFILE = "tracing.outfile"
 // NOTE: Metrics export port: only for testing purpose otherwise the master doesn't know this port of other nodes
 const METRICS_EXPORT_PORT = "metrics.export.port"
 
+// Enable the distributed monitoring
+const DMS_ENABLED = "dms.enabled"
+
 // Force the node to be the master
 const IM_THE_MASTER = "dms.master"
 
