@@ -269,8 +269,9 @@ func analyzer(uc chan bully.NodeInfo) {
 
 		check_change_state(nodeCPUUsage, nodeRAMUsage)
 
-		uc <- bully.NodeInfo{Status: string(nodeState), AvailableRsrc: (nodeCPUUsage + nodeRAMUsage)}
-
+		if uc != nil {
+			uc <- bully.NodeInfo{Status: string(nodeState), AvailableRsrc: (nodeCPUUsage + nodeRAMUsage)}
+		}
 		// Wait before next iteration
 		log.Printf("Waiting")
 		time.Sleep(10 * time.Second)

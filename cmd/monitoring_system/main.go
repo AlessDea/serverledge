@@ -68,12 +68,15 @@ func main() {
 
 	// start the monitorin system engine
 	wg.Add(1)
-	go ms.Init(&wg, msUpdate)
-	log.Printf("Started the Local Monitoring System engine\n")
 
 	if !config.GetBool(config.DMS_ENABLED, false) {
+		go ms.Init(&wg, nil)
+		log.Printf("Started the Local Monitoring System engine\n")
 		wg.Wait()
 		os.Exit(0)
+	} else {
+		go ms.Init(&wg, msUpdate)
+		log.Printf("Started the Local Monitoring System engine\n")
 	}
 
 	// start the distributed monitorin system engine
