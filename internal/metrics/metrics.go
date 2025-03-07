@@ -113,6 +113,9 @@ func Init() {
 	container.ContainersPerFunctions["lif"] = 0
 	container.ContainersPerFunctions["kmeans"] = 0
 	container.ContainersPerFunctions["rsa"] = 0
+	container.ContainersPerFunctions["imgp"] = 0
+	container.ContainersPerFunctions["msort"] = 0
+	container.ContainersPerFunctions["dd"] = 0
 
 	// handler := promhttp.HandlerFor(registry, promhttp.HandlerOpts{
 	// 	EnableOpenMetrics: true})
