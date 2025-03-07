@@ -2,6 +2,7 @@ package ms
 
 import (
 	"fmt"
+	"log"
 	"os"
 	"path/filepath"
 
@@ -112,7 +113,7 @@ func loadThresholdsConfig(filename string) error {
 		setDefaultThresholds(&thresholds)
 	}
 	// Output the parsed structure
-	fmt.Printf("Parsed YAML: %+v\n", thresholds)
+	log.Printf("Parsed YAML: %+v\n", thresholds)
 	return nil
 }
 
@@ -136,6 +137,6 @@ func loadActionsConfig(filename string) error {
 	}
 
 	// Output the parsed structure
-	fmt.Printf("Parsed YAML: %+v\n", config)
+	log.Printf("Parsed YAML: %+v\n", config)
 	return nil
 }

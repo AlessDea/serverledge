@@ -31,6 +31,7 @@ func perform_on_exporter(exporter string, command CommandType) {
 }
 
 func execute_policy() {
+	log.Println("Executing policy")
 	switch state {
 	case MsFullPerf:
 		// run all
@@ -73,6 +74,7 @@ func change_state() {
 func check_change_state(nodeCPUUsage float64, nodeRAMUsage float64) {
 	checkNodeThreshold(nodeCPUUsage, nodeRAMUsage)
 	if state != prevState {
+		log.Println("Changing state")
 		change_state()
 	}
 }
@@ -102,15 +104,17 @@ func check_change_state(nodeCPUUsage float64, nodeRAMUsage float64) {
 // }
 
 func checkNodeThreshold(nodeCPUUsage float64, nodeRAMUsage float64) {
-	if nodeCPUUsage > thresholds.Inactive.Node.CPU && nodeRAMUsage > thresholds.Inactive.Node.RAM {
+	log.Println("Changing State")
+	log.Printf("nodeCPUUsage: %4.f | nodeRAMUsage: %4.f\n", nodeCPUUsage, nodeRAMUsage)
+	if nodeCPUUsage > thresholds.Inactive.Node.CPU || nodeRAMUsage > thresholds.Inactive.Node.RAM {
 		nodeState = StateInactive
 		prevState = state
 		state = MsDisabled
-	} else if nodeCPUUsage > thresholds.Critical.Node.CPU && nodeRAMUsage > thresholds.Critical.Node.RAM {
+	} else if nodeCPUUsage > thresholds.Critical.Node.CPU || nodeRAMUsage > thresholds.Critical.Node.RAM {
 		nodeState = StateCritical
 		prevState = state
 		state = MsIdle
-	} else if nodeCPUUsage > thresholds.Degraded.Node.CPU && nodeRAMUsage > thresholds.Degraded.Node.RAM {
+	} else if nodeCPUUsage > thresholds.Degraded.Node.CPU || nodeRAMUsage > thresholds.Degraded.Node.RAM {
 		nodeState = StateDegraded
 		prevState = state
 		state = MsPartialPerf

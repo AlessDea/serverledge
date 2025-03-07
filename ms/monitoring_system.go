@@ -29,7 +29,7 @@ func readMetricsConfig(filePath string) (map[string]float64, error) {
 
 	// log.Println("File content:") // Print content for debugging
 	// content, err := os.ReadFile(filePath)
-	// fmt.Println(string(content))
+	// log.Println(string(content))
 	log.Println("File content:")
 	log.Println(string(content)) // Stampa il contenuto del file
 
@@ -242,14 +242,14 @@ func analyzer(uc chan bully.NodeInfo) {
 		if err != nil {
 			log.Printf("Error calculating node CPU usage: %v", err)
 		} else {
-			fmt.Printf("Node CPU Usage: %.2f%%\n", nodeCPUUsage)
+			log.Printf("Node CPU Usage: %.2f%%\n", nodeCPUUsage)
 		}
 
 		nodeRAMUsage, err := calculateRAMUsage(url)
 		if err != nil {
 			log.Printf("Error calculating node RAM usage: %v", err)
 		} else {
-			fmt.Printf("Node RAM Usage: %.2f%%\n", nodeRAMUsage)
+			log.Printf("Node RAM Usage: %.2f%%\n", nodeRAMUsage)
 		}
 
 		// Calculate CPU and RAM usage for a specific process: serverledge
@@ -257,14 +257,14 @@ func analyzer(uc chan bully.NodeInfo) {
 		if err != nil {
 			log.Printf("Error calculating process CPU usage: %v", err)
 		} else {
-			fmt.Printf("Process CPU Usage: %.2f%%\n", processCPUUsage)
+			log.Printf("Process CPU Usage: %.2f%%\n", processCPUUsage)
 		}
 
 		processRAMUsage, err := calculateProcessRAM(url)
 		if err != nil {
 			log.Printf("Error calculating process RAM usage: %v", err)
 		} else {
-			fmt.Printf("Process RAM Usage: %.2f%%\n", processRAMUsage)
+			log.Printf("Process RAM Usage: %.2f%%\n", processRAMUsage)
 		}
 
 		check_change_state(nodeCPUUsage, nodeRAMUsage)
@@ -280,17 +280,27 @@ func analyzer(uc chan bully.NodeInfo) {
 func Init(wg *sync.WaitGroup, uc chan bully.NodeInfo) {
 	defer wg.Done() // Segnala che la goroutine ha finito
 
-	// load thresholds
-	err := loadThresholdsConfig(thresholdsConfigPath)
+	// Apri (o crea) il file di log
+	logFile, err := os.OpenFile("serverledge_ms.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
-		fmt.Printf("Error loading thresholds: %v\n", err)
+		log.Fatalf("Errore nell'apertura del file di log: %v", err)
+	}
+
+	// Reindirizza i log al file
+	log.SetOutput(logFile)
+	log.SetFlags(log.Ldate | log.Ltime | log.Lshortfile) // Formato log con data, ora e file sorgente
+
+	// load thresholds
+	err = loadThresholdsConfig(thresholdsConfigPath)
+	if err != nil {
+		log.Printf("Error loading thresholds: %v\n", err)
 	}
 	log.Println("loaded thresholds\n")
 
 	// load change state policy actions
 	err = loadActionsConfig(policyConfigPath)
 	if err != nil {
-		fmt.Printf("Error loading thresholds: %v\n", err)
+		log.Printf("Error loading thresholds: %v\n", err)
 	}
 	log.Println("loaded thresholds\n")
 

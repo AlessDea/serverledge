@@ -1,10 +1,10 @@
 Idle:
-  node-exporter: pause
+  node-exporter: run
   process-exporter: pause
   cadvisor: pause
   prometheus: pause
 Disabled:
-  node-exporter: stop
+  node-exporter: run
   process-exporter: stop
   cadvisor: stop
   prometheus: stop

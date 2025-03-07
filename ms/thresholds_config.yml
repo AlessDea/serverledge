@@ -1,21 +1,21 @@
 Degraded:
   node:
-    cpu: 70.0
-    ram: 70.0
+    cpu: 25.0
+    ram: 35.0
   monitoring_system:
-    cpu: 70.0
-    ram: 70.0
+    cpu: 10.0
+    ram: 10.0
 Critical:
   node:
-    cpu: 80.0
-    ram: 80.0
+    cpu: 35.0
+    ram: 45.0
   monitoring_system:
-    cpu: 80.0
-    ram: 80.0
+    cpu: 15.0
+    ram: 15.0
 Inactive:
   node:
-    cpu: 95.0
-    ram: 95.0
+    cpu: 60.0
+    ram: 80.0
   monitoring_system:
-    cpu: 95.0
-    ram: 95.0
+    cpu: 25.0
+    ram: 25.0
