@@ -372,17 +372,24 @@ func GetContainerMetrics(containerName string) (ContainerMetrics, error) {
 
 	lines := strings.Split(string(body), "\n")
 	var cpuUsage, memUsage float64
+	cpuUsage = 0.0
+	memUsage = 0.0
 
 	cpuRegex := regexp.MustCompile(fmt.Sprintf(`container_cpu_usage_seconds_total\{.*name="%s[0-9]*".*\} ([0-9.]+)`, containerName))
 	memRegex := regexp.MustCompile(fmt.Sprintf(`container_memory_usage_bytes\{.*name="%s[0-9]*".*\} ([0-9.]+)`, containerName))
 
 	for _, line := range lines {
 		if match := cpuRegex.FindStringSubmatch(line); match != nil {
+			tmp := cpuUsage
 			cpuUsage, _ = strconv.ParseFloat(match[1], 64)
+			cpuUsage += tmp
 		}
 
 		if match := memRegex.FindStringSubmatch(line); match != nil {
+			tmp := memUsage
 			memUsage, _ = strconv.ParseFloat(match[1], 64)
+			memUsage += tmp
+
 		}
 	}
 

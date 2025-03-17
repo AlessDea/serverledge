@@ -242,7 +242,7 @@ func (i NodeInfo) checkElectionConditions(thisID string, other Peer) bool {
 	}
 
 	// Secondary comparison: same status and cloudDist
-	if thisNode.Status == otherNode.Status && thisNode.CloudDist == otherNode.CloudDist {
+	if thisNode.Status == otherNode.Status && thisNode.CloudDist <= otherNode.CloudDist {
 		if thisNode.AvailableRsrc > otherNode.AvailableRsrc {
 			return true
 		} else if thisNode.AvailableRsrc == otherNode.AvailableRsrc && thisID > other.ID {
