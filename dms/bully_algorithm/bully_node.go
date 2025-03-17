@@ -17,7 +17,7 @@ var nodeAddressByID = make(map[string]string)
 type NodeInfo struct {
 	Status        string        // Normal, Degraded, Critical, Inactive
 	CloudDist     time.Duration // time distance, calculated with vivaldi
-	AvailableRsrc float64       // percentage on RAM, CPU and Net I/O
+	AvailableRsrc float64       // percentage on RAM and CPU
 	SuperBully    bool          // if true the node has to be the master
 }
 

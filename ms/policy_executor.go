@@ -1,7 +1,9 @@
 package ms
 
 import (
+	"fmt"
 	"log"
+	"time"
 )
 
 func perform_on_exporter(exporter string, command CommandType) {
@@ -75,6 +77,7 @@ func check_change_state(nodeCPUUsage float64, nodeRAMUsage float64) {
 	checkNodeThreshold(nodeCPUUsage, nodeRAMUsage)
 	if state != prevState {
 		log.Println("Changing state")
+		fmt.Fprintf(StatesLogFile, "[%d] change state: %s -> %s", time.Now().UnixMilli(), prevState, state)
 		change_state()
 	}
 }
