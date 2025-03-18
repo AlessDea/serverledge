@@ -518,6 +518,8 @@ func parseMetrics(resp *http.Response, metricNames []string) {
 			if deltaTime > 0 && deltaValue > 0 {
 				percentage := (deltaValue) // / deltaTime)
 				nodeCPUSecondsTotalVec.WithLabelValues(mode).Set(percentage)
+			} else if deltaTime > 0 {
+				nodeCPUSecondsTotalVec.WithLabelValues(mode).Set(currentValue)
 			}
 		}
 
@@ -545,6 +547,8 @@ func parseMetrics(resp *http.Response, metricNames []string) {
 			if deltaTime > 0 && deltaValue > 0 {
 				percentage := (deltaValue) // / deltaTime)
 				processCPUSecondsTotalVec.WithLabelValues(mode).Set(percentage)
+			} else if deltaTime > 0 {
+				processCPUSecondsTotalVec.WithLabelValues(mode).Set(currentValue)
 			}
 		}
 

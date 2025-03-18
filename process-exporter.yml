@@ -14,9 +14,3 @@ process_names:
   - name: "monitoring_system"
     cmdline:
       - 'monitoring_system'
-  - name: 'rsa_func'
-    cmdline:
-      - 'rsa_executor'
-  - name: 'kmeans_func'
-    cmdline:
-      - 'km_executor'

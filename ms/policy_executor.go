@@ -107,7 +107,6 @@ func check_change_state(nodeCPUUsage float64, nodeRAMUsage float64) {
 // }
 
 func checkNodeThreshold(nodeCPUUsage float64, nodeRAMUsage float64) {
-	log.Println("Changing State")
 	log.Printf("nodeCPUUsage: %4.f | nodeRAMUsage: %4.f\n", nodeCPUUsage, nodeRAMUsage)
 	if nodeCPUUsage > thresholds.Inactive.Node.CPU || nodeRAMUsage > thresholds.Inactive.Node.RAM {
 		nodeState = StateInactive

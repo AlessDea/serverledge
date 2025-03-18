@@ -255,19 +255,19 @@ func analyzer(uc chan bully.NodeInfo) {
 		}
 
 		// Calculate CPU and RAM usage for a specific process: serverledge
-		processCPUUsage, err := calculateProcessCPU(url)
-		if err != nil {
-			log.Printf("Error calculating process CPU usage: %v", err)
-		} else {
-			log.Printf("Process CPU Usage: %.2f%%\n", processCPUUsage)
-		}
+		// processCPUUsage, err := calculateProcessCPU(url)
+		// if err != nil {
+		// 	log.Printf("Error calculating process CPU usage: %v", err)
+		// } else {
+		// 	log.Printf("Process CPU Usage: %.2f%%\n", processCPUUsage)
+		// }
 
-		processRAMUsage, err := calculateProcessRAM(url)
-		if err != nil {
-			log.Printf("Error calculating process RAM usage: %v", err)
-		} else {
-			log.Printf("Process RAM Usage: %.2f%%\n", processRAMUsage)
-		}
+		// processRAMUsage, err := calculateProcessRAM(url)
+		// if err != nil {
+		// 	log.Printf("Error calculating process RAM usage: %v", err)
+		// } else {
+		// 	log.Printf("Process RAM Usage: %.2f%%\n", processRAMUsage)
+		// }
 
 		check_change_state(nodeCPUUsage, nodeRAMUsage)
 
@@ -276,7 +276,7 @@ func analyzer(uc chan bully.NodeInfo) {
 		}
 		// Wait before next iteration
 		log.Printf("Waiting")
-		time.Sleep(10 * time.Second)
+		time.Sleep(3 * time.Second)
 	}
 }
 
