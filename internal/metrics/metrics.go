@@ -466,7 +466,9 @@ func parseMetrics(resp *http.Response, metricNames []string) {
 				case "node_memory_MemFree_bytes":
 					nodeMemoryMemFree.Set(value)
 				case "node_memory_MemTotal_bytes":
+					log.Printf("node_memory_MemTotal_bytes %.5f", value)
 					nodeMemoryMemTotal.Set(value)
+					break
 				case "namedprocess_namegroup_cpu_seconds_total":
 					mode := m.GetLabel()[1].GetValue()
 					//log.Printf("metric: %v\n", m)
@@ -540,9 +542,9 @@ func parseMetrics(resp *http.Response, metricNames []string) {
 			deltaValue := currentValue - prevValue
 			deltaTime := currentTime.Sub(prevTime).Seconds()
 
-			if currentValue > prevValue {
-				//log.Printf("mode: %s: Current value %.5f - Prev value %.5f\ndelta time %.5f\n", mode, currentValue, prevValue, deltaTime)
-			}
+			// if currentValue > prevValue {
+			log.Printf("mode: %s: Current value %.5f - Prev value %.5f\ndelta time %.5f\n", mode, currentValue, prevValue, deltaTime)
+			// }
 
 			if deltaTime > 0 && deltaValue > 0 {
 				percentage := (deltaValue) // / deltaTime)
