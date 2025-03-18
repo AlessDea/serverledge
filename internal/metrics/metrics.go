@@ -582,9 +582,9 @@ func parseMetrics(resp *http.Response, metricNames []string) {
 			}
 		}
 
-		if currentValue != 0 {
-			prevProcessValues[mode] = currentValue
-		}
+		// if currentValue != 0 {
+		prevProcessValues[mode] = currentValue
+		// }
 		previousProcTimestamps[mode] = currentTime
 	}
 }
