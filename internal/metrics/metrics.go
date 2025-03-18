@@ -76,6 +76,7 @@ func Init() {
 
 	go func() {
 		for {
+			log.Println("COLLECTING")
 			metricsCollector()
 			time.Sleep(10 * time.Second)
 		}
@@ -272,6 +273,7 @@ func collectNodeMetrics() {
 	}
 	defer resp.Body.Close()
 
+	log.Println("parsing NODE metrics")
 	parseMetrics(resp, []string{
 		"node_cpu_seconds_total",
 		"node_cpu_core",
@@ -289,6 +291,7 @@ func collectProcessMetrics() {
 	}
 	defer resp.Body.Close()
 
+	log.Println("parsing PROCESS metrics")
 	parseMetrics(resp, []string{
 		"namedprocess_namegroup_cpu_seconds_total",
 		"namedprocess_namegroup_memory_bytes",
@@ -352,7 +355,7 @@ func collectCAdvisorMetrics() {
 		AddFunctionCPUTotal("imgp", imgp.CPUUsage)
 		AddFunctionMemTotal("imgp", imgp.MemoryUsage)
 	}
-
+	log.Println("parsing CADVISOR metrics")
 	// ...
 
 }
