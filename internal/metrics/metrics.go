@@ -542,7 +542,7 @@ func parseMetrics(resp *http.Response, metricNames []string) {
 			deltaTime := currentTime.Sub(prevTime).Seconds()
 
 			if currentValue > prevValue {
-				//log.Printf("mode: %s: Current value %.5f - Prev value %.5f\ndelta time %.5f\n", mode, currentValue, prevValue, deltaTime)
+				log.Printf("mode: %s: Current value %.5f - Prev value %.5f\ndelta time %.5f\n", mode, currentValue, prevValue, deltaTime)
 			}
 
 			if deltaTime > 0 && deltaValue > 0 {
@@ -570,9 +570,9 @@ func parseMetrics(resp *http.Response, metricNames []string) {
 			deltaValue := currentValue - prevValue
 			deltaTime := currentTime.Sub(prevTime).Seconds()
 
-			// if currentValue > prevValue {
-			log.Printf("mode: %s: Current value %.5f - Prev value %.5f\ndelta time %.5f\n", mode, currentValue, prevValue, deltaTime)
-			// }
+			if currentValue > prevValue {
+				// log.Printf("mode: %s: Current value %.5f - Prev value %.5f\ndelta time %.5f\n", mode, currentValue, prevValue, deltaTime)
+			}
 
 			if deltaTime > 0 && deltaValue > 0 {
 				percentage := (deltaValue) // / deltaTime)
