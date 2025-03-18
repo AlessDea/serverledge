@@ -269,7 +269,7 @@ func collectNodeMetrics() {
 	resp, err := http.Get(nodeExporterURL)
 	if err != nil {
 		log.Printf("Error retrieving metrics from Node Exporter: %v", err)
-		// return
+		return
 	}
 	defer resp.Body.Close()
 
@@ -287,7 +287,7 @@ func collectProcessMetrics() {
 	resp, err := http.Get(processExporterURL)
 	if err != nil {
 		log.Printf("Errore nel recuperare le metriche di Process Exporter: %v", err)
-		// return
+		return
 	}
 	defer resp.Body.Close()
 
