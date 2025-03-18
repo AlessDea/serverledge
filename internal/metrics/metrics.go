@@ -58,6 +58,8 @@ const (
 )
 
 func Init() {
+	mux := http.NewServeMux()
+
 	if config.GetBool(config.METRICS_ENABLED, false) {
 		log.Println("Metrics enabled.")
 		Enabled = true
@@ -83,10 +85,10 @@ func Init() {
 	}()
 
 	// Espone le metriche su /metrics per Prometheus
-	http.Handle("/metrics", promhttp.Handler())
+	mux.Handle("/metrics", promhttp.Handler())
 
 	// Esponi le metriche in formato JSON (prometheus non supporta JSON)
-	http.HandleFunc("/metrics/json", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("/metrics/json", func(w http.ResponseWriter, r *http.Request) {
 		metricFamilies, err := prometheus.DefaultGatherer.Gather()
 		if err != nil {
 			http.Error(w, "Errore nella raccolta delle metriche", http.StatusInternalServerError)
@@ -107,8 +109,18 @@ func Init() {
 	})
 
 	port := ":" + strconv.Itoa(config.GetInt(config.METRICS_EXPORT_PORT, 2112)) //":2112" // Porta per Prometheus
+	// Creazione del server con timeout configurati
+	Server := &http.Server{
+		Addr:              port,
+		Handler:           mux,
+		ReadTimeout:       5 * time.Second,  // Timeout per la lettura della richiesta
+		WriteTimeout:      10 * time.Second, // Timeout per la scrittura della risposta
+		IdleTimeout:       15 * time.Second, // Timeout per connessioni inattive
+		ReadHeaderTimeout: 2 * time.Second,  // Timeout per la lettura degli header
+	}
+
 	log.Println("Esportazione delle metriche su localhost" + port)
-	log.Fatal(http.ListenAndServe(port, nil))
+	log.Fatal(Server.ListenAndServe())
 
 	// add functions to be monitored
 	container.ContainersPerFunctions["lif"] = 0
@@ -266,7 +278,11 @@ func metricsCollector() {
 }
 
 func collectNodeMetrics() {
-	resp, err := http.Get(nodeExporterURL)
+	// resp, err := http.Get(nodeExporterURL)
+	client := http.Client{
+		Timeout: 5 * time.Second, // Timeout totale della richiesta
+	}
+	resp, err := client.Get(nodeExporterURL)
 	if err != nil {
 		log.Printf("Error retrieving metrics from Node Exporter: %v", err)
 		return
@@ -284,7 +300,11 @@ func collectNodeMetrics() {
 }
 
 func collectProcessMetrics() {
-	resp, err := http.Get(processExporterURL)
+	// resp, err := http.Get(processExporterURL)
+	client := http.Client{
+		Timeout: 5 * time.Second, // Timeout totale della richiesta
+	}
+	resp, err := client.Get(processExporterURL)
 	if err != nil {
 		log.Printf("Errore nel recuperare le metriche di Process Exporter: %v", err)
 		return
@@ -362,7 +382,12 @@ func collectCAdvisorMetrics() {
 
 func GetContainerMetrics(containerName string) (ContainerMetrics, error) {
 
-	resp, err := http.Get(cAdvisorExporterURL)
+	// resp, err := http.Get(cAdvisorExporterURL)
+	client := http.Client{
+		Timeout: 5 * time.Second, // Timeout totale della richiesta
+	}
+
+	resp, err := client.Get(cAdvisorExporterURL)
 	if err != nil {
 		return ContainerMetrics{}, fmt.Errorf("Errore richiesta cAdvisor: %v", err)
 	}

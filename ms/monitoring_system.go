@@ -276,7 +276,7 @@ func analyzer(uc chan bully.NodeInfo) {
 		}
 		// Wait before next iteration
 		log.Printf("Waiting")
-		time.Sleep(3 * time.Second)
+		time.Sleep(11 * time.Second)
 	}
 }
 
