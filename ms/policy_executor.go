@@ -77,7 +77,7 @@ func check_change_state(nodeCPUUsage float64, nodeRAMUsage float64) {
 	checkNodeThreshold(nodeCPUUsage, nodeRAMUsage)
 	if state != prevState {
 		log.Println("Changing state")
-		fmt.Fprintf(StatesLogFile, "[%d] change state: %s -> %s", time.Now().UnixMilli(), prevState, state)
+		StatesLogFile.Write([]byte(fmt.Sprintf("[%d] change state: %s -> %s", time.Now().UnixMilli(), prevState, state)))
 		change_state()
 	}
 }
