@@ -515,8 +515,11 @@ func parseMetrics(resp *http.Response, metricNames []string) {
 					}
 					//log.Printf("Values for mode %s: %v", mode, value)
 
+					if _, exists := cpuProcModeStats[proc]; !exists {
+						cpuProcModeStats[proc] = make(map[string]float64)
+
+					}
 					cpuProcModeStats[proc][mode] = value //= append(cpuProcModeStats[mode], value)
-					processCPUSecondsTotalVec.WithLabelValues(proc, mode).Set(value)
 
 					// deltavalue := currentValue - prevProcessValues[mode]
 					// if deltavalue > 0 {
@@ -561,6 +564,13 @@ func parseMetrics(resp *http.Response, metricNames []string) {
 			previousValues[mode] = currentValue
 		}
 		previousTimestamps[mode] = currentTime
+	}
+
+	for procName, modeStats := range cpuProcModeStats {
+		for modeName, value := range modeStats {
+			processCPUSecondsTotalVec.WithLabelValues(procName, modeName).Set(value)
+		}
+
 	}
 
 	// calculate and set average for the process (monitoring system) cpu usage
