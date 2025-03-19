@@ -33,7 +33,8 @@ var proc_modes = []string{"user", "system"}
 
 var cpuModeStats = make(map[string][]float64) // Mappa per memorizzare i valori per ogni modalità
 
-var cpuProcModeStats = make(map[string][]float64) // Mappa per memorizzare i valori per ogni modalità per il processo
+// var cpuProcModeStats = make(map[string][]float64) // Mappa per memorizzare i valori per ogni modalità per il processo
+var cpuProcModeStats = make(map[string]map[string]float64)
 
 // Mappa per memorizzare i valori precedenti per ogni modalità
 var previousValues = make(map[string]float64)
@@ -204,7 +205,7 @@ var (
 			Name: "namedprocess_namegroup_cpu_seconds_total",
 			Help: "Total CPU time spent in different modes for the specific process",
 		},
-		[]string{"mode"},
+		[]string{"groupnames", "mode"},
 	)
 	processMemoryBytes = prometheus.NewGauge(prometheus.GaugeOpts{Name: "namedprocess_namegroup_memory_bytes"})
 )
@@ -499,6 +500,7 @@ func parseMetrics(resp *http.Response, metricNames []string) {
 					break
 				case "namedprocess_namegroup_cpu_seconds_total":
 					mode := m.GetLabel()[1].GetValue()
+					proc := m.GetLabel()[0].GetValue()
 					//log.Printf("metric: %v\n", m)
 					if mode == "" {
 						log.Printf("Mode label not found for metric: %v\n", m)
@@ -508,12 +510,13 @@ func parseMetrics(resp *http.Response, metricNames []string) {
 					value := *m.Counter.Value
 
 					// Inizializza il vettore per la modalità se non esiste
-					if _, exists := cpuModeStats[mode]; !exists {
-						cpuModeStats[mode] = []float64{}
+					if _, exists := cpuModeStats[proc]; !exists {
+						cpuModeStats[proc] = []float64{}
 					}
 					//log.Printf("Values for mode %s: %v", mode, value)
 
-					cpuProcModeStats[mode] = append(cpuProcModeStats[mode], value)
+					cpuProcModeStats[proc][mode] = value //= append(cpuProcModeStats[mode], value)
+					processCPUSecondsTotalVec.WithLabelValues(proc, mode).Set(value)
 
 					// deltavalue := currentValue - prevProcessValues[mode]
 					// if deltavalue > 0 {
@@ -561,31 +564,31 @@ func parseMetrics(resp *http.Response, metricNames []string) {
 	}
 
 	// calculate and set average for the process (monitoring system) cpu usage
-	for _, mode := range proc_modes {
-		average := calculateAverage(cpuProcModeStats[mode])
-		// currentValue := m.GetCounter().GetValue()
-		currentValue := average
+	// for _, mode := range proc_modes {
+	// average := calculateAverage(cpuProcModeStats[mode])
+	// // currentValue := m.GetCounter().GetValue()
+	// currentValue := average
 
-		if prevValue, exists := prevProcessValues[mode]; exists {
-			prevTime := previousProcTimestamps[mode]
-			deltaValue := currentValue - prevValue
-			deltaTime := currentTime.Sub(prevTime).Seconds()
+	// if prevValue, exists := prevProcessValues[mode]; exists {
+	// 	prevTime := previousProcTimestamps[mode]
+	// 	deltaValue := currentValue - prevValue
+	// 	deltaTime := currentTime.Sub(prevTime).Seconds()
 
-			if currentValue > prevValue {
-				// log.Printf("mode: %s: Current value %.5f - Prev value %.5f\ndelta time %.5f\n", mode, currentValue, prevValue, deltaTime)
-			}
+	// 	if currentValue > prevValue {
+	// 		// log.Printf("mode: %s: Current value %.5f - Prev value %.5f\ndelta time %.5f\n", mode, currentValue, prevValue, deltaTime)
+	// 	}
 
-			if deltaTime > 0 && deltaValue > 0 {
-				percentage := (deltaValue) // / deltaTime)
-				processCPUSecondsTotalVec.WithLabelValues(mode).Set(percentage)
-			} else if deltaTime > 0 {
-				processCPUSecondsTotalVec.WithLabelValues(mode).Set(currentValue)
-			}
-		}
+	// 	if deltaTime > 0 && deltaValue > 0 {
+	// 		percentage := (deltaValue) // / deltaTime)
+	// 		processCPUSecondsTotalVec.WithLabelValues(mode).Set(percentage)
+	// 	} else if deltaTime > 0 {
+	// 		processCPUSecondsTotalVec.WithLabelValues(mode).Set(currentValue)
+	// 	}
+	// }
 
-		// if currentValue != 0 {
-		prevProcessValues[mode] = currentValue
-		// }
-		previousProcTimestamps[mode] = currentTime
-	}
+	// // if currentValue != 0 {
+	// prevProcessValues[mode] = currentValue
+	// // }
+	// previousProcTimestamps[mode] = currentTime
+	// }
 }
