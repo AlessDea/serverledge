@@ -1,7 +1,6 @@
 package ms
 
 import (
-	"fmt"
 	"log"
 	"time"
 )
@@ -77,10 +76,8 @@ func check_change_state(nodeCPUUsage float64, nodeRAMUsage float64) {
 	checkNodeThreshold(nodeCPUUsage, nodeRAMUsage)
 	if state != prevState {
 		log.Println("Changing state")
-		_, err := StatesLogFile.Write([]byte(fmt.Sprintf("[%d] change state: %s -> %s\n", time.Now().UnixMilli(), prevState, state))))
-		if err != nil {
-			log.Fatalf("Error writing to file: %v", err)
-		}
+		log.Printf("policy_executor::state::change [%d] change state: %s -> %s\n", time.Now().UnixMilli(), prevState, state)
+
 		change_state()
 	}
 }

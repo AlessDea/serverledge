@@ -21,8 +21,6 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
-var StatesLogFile *os.File
-
 func readMetricsConfig(filePath string) (map[string]float64, error) {
 	content, err := os.ReadFile(filePath)
 	if err != nil {
@@ -288,14 +286,6 @@ func Init(wg *sync.WaitGroup, uc chan bully.NodeInfo) {
 	if err != nil {
 		log.Fatalf("Errore nell'apertura del file di log: %v", err)
 	}
-
-	// apri/crea file raccolta cambio stato
-	StatesLogFile, err := os.OpenFile("statesChangeLogFile.txt", os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0644)
-	if err != nil {
-		fmt.Println("Error opening file:", err)
-		return
-	}
-	defer StatesLogFile.Close()
 
 	// Reindirizza i log al file
 	log.SetOutput(logFile)
