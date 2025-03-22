@@ -68,7 +68,7 @@ func (node *BullyNode) ConnectToPeers() {
 		}
 
 		rpcClient := node.connect(peerAddr)
-		pingMessage := Message{FromPeerID: node.ID, Type: PING}
+		pingMessage := Message{FromPeerID: node.ID, Type: PING, info: node.Info}
 		reply, _ := node.CommunicateWithPeer(rpcClient, pingMessage)
 
 		if reply.IsPongMessage() {
@@ -114,6 +114,7 @@ func (node *BullyNode) HandleMessage(args Message, reply *Message) error {
 	case PING:
 		reply.Type = PONG
 		reply.info = node.Info
+		node.Peers.peerByID[args.FromPeerID].info = args.info
 	}
 
 	return nil
@@ -138,7 +139,7 @@ func (node *BullyNode) Elect(update chan string) {
 		}
 
 		log.Printf("%s send ELECTION message to peer %s\n", node.ID, peer.ID)
-		electionMessage := Message{FromPeerID: node.ID, Type: ELECTION}
+		electionMessage := Message{FromPeerID: node.ID, Type: ELECTION, info: node.Info}
 
 		reply, _ := node.CommunicateWithPeer(peer.RPCClient, electionMessage)
 
