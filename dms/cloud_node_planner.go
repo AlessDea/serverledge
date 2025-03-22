@@ -6,7 +6,6 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
-	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -36,6 +35,29 @@ var (
 	mutex          sync.Mutex
 	metricsURL     = "http://192.168.1.50:8080/metrics" // Modifica con l'IP del nodo master
 )
+
+type Label struct {
+	Name  string `json:"name"`
+	Value string `json:"value"`
+}
+
+type MetricValue struct {
+	Gauge   *float64 `json:"gauge,omitempty"`
+	Counter *float64 `json:"counter,omitempty"`
+	Summary *struct {
+		SampleCount int                  `json:"sample_count"`
+		SampleSum   float64              `json:"sample_sum"`
+		Quantiles   []map[string]float64 `json:"quantile"`
+	} `json:"summary,omitempty"`
+}
+
+type JMetric struct {
+	Name   string        `json:"name"`
+	Help   string        `json:"help"`
+	Type   int           `json:"type"`
+	Labels []Label       `json:"label,omitempty"`
+	Values []MetricValue `json:"metric"`
+}
 
 // get Leader Election updates
 func updateLeaderHandler(w http.ResponseWriter, r *http.Request) {
@@ -87,50 +109,68 @@ func getMetricsFromMaster() {
 	defer mu.Unlock()
 
 	for nodeName, rawMetrics := range metricsData {
-		metricsInfo := NodeMetrics{}
-		functionSet := make(map[string]struct{}) // Evita duplicati
+		// metricsInfo := NodeMetrics{}
+		// functionSet := make(map[string]struct{}) // Evita duplicati
 
 		// Decodifica il JSON grezzo in una lista di Metric
-		var metrics []Metric
-		if err := json.Unmarshal(rawMetrics, &metrics); err != nil {
+		var jsonMetrics map[string]map[string]JMetric
+
+		if err := json.Unmarshal(rawMetrics, &jsonMetrics); err != nil {
 			log.Printf("❌ Errore nel parsing delle metriche per il nodo %s: %v\n", nodeName, err)
 			continue
 		}
 
-		// Itera sulle metriche decodificate
-		for _, metric := range metrics {
-			value, err := strconv.ParseFloat(metric.Value, 64)
-			if err != nil {
-				log.Printf("⚠️ Errore nella conversione del valore di %s per %s\n", metric.Name, nodeName)
-				continue
-			}
+		// Itera sui nodi presenti nei dati JSON
+		for nodeName, metrics := range jsonMetrics {
+			metricsInfo := NodeMetrics{}
+			functionSet := make(map[string]struct{}) // Per evitare duplicati delle funzioni
 
-			switch metric.Name {
-			case "node_cpu_seconds_total":
-				metricsInfo.CPUUsage = value
-			case "node_memory_MemTotal_bytes":
-				metricsInfo.MemTotal = value
-			case "node_memory_MemAvailable_bytes":
-				metricsInfo.MemUsed = metricsInfo.MemTotal - value // Calcola la memoria usata
-			}
+			for _, metric := range metrics {
+				var value float64
 
-			// 📌 Controlla se la metrica riguarda una funzione
-			if strings.HasPrefix(metric.Name, "sedge_") {
-				if funcName, exists := metricFunctionName(metric.Name); exists {
-					functionSet[funcName] = struct{}{}
+				// Controlla che la metrica abbia valori e ne estrae uno
+				if len(metric.Values) > 0 {
+					if metric.Values[0].Gauge != nil {
+						value = *metric.Values[0].Gauge
+					} else if metric.Values[0].Counter != nil {
+						value = *metric.Values[0].Counter
+					} else {
+						log.Printf("⚠️ Nessun valore valido trovato per %s su %s\n", metric.Name, nodeName)
+						continue
+					}
+				}
+
+				// Controlla se è una metrica del nodo e salva i valori
+				switch metric.Name {
+				case "node_cpu_seconds_total":
+					metricsInfo.CPUUsage = value
+				case "node_memory_MemTotal_bytes":
+					metricsInfo.MemTotal = value
+				case "node_memory_MemAvailable_bytes":
+					metricsInfo.MemUsed = metricsInfo.MemTotal - value // Calcola la memoria usata
+				}
+
+				// 📌 Controlla se la metrica riguarda una funzione
+				if strings.HasPrefix(metric.Name, "sedge_") {
+					for _, label := range metric.Labels {
+						if label.Name == "function" {
+							functionSet[label.Value] = struct{}{}
+						}
+					}
 				}
 			}
+
+			// Converte la mappa in lista di funzioni
+			for funcName := range functionSet {
+				metricsInfo.Functions = append(metricsInfo.Functions, funcName)
+			}
+
+			// Salva i dati analizzati nella mappa
+			nodeMetricsMap[nodeName] = metricsInfo
 		}
 
-		// Converte la mappa in lista di funzioni
-		for funcName := range functionSet {
-			metricsInfo.Functions = append(metricsInfo.Functions, funcName)
-		}
-
-		// Salva i dati analizzati nella mappa
-		nodeMetricsMap[nodeName] = metricsInfo
+		log.Println("📊 Analisi completata! Metriche aggiornate.")
 	}
-	log.Println("📊 Analisi completata! Metriche aggiornate.")
 }
 
 func metricFunctionName(metricName string) (string, bool) {
