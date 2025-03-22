@@ -10,7 +10,7 @@ Disabled:
   prometheus: stop
 PartialPerformance:
   node-exporter: run
-  process-exporter: pause
+  process-exporter: run
   cadvisor: pause
   prometheus: run
 FullPerformance:
