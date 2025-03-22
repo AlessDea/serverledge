@@ -282,17 +282,17 @@ func Init(wg *sync.WaitGroup, uc chan bully.NodeInfo) {
 	defer wg.Done() // Segnala che la goroutine ha finito
 
 	// Apri/crea il file di log
-	logFile, err := os.OpenFile("serverledge_ms.log", os.O_TRUNC|os.O_CREATE|os.O_WRONLY, 0644)
-	if err != nil {
-		log.Fatalf("Errore nell'apertura del file di log: %v", err)
-	}
+	// logFile, err := os.OpenFile("serverledge_ms.log", os.O_TRUNC|os.O_CREATE|os.O_WRONLY, 0644)
+	// if err != nil {
+	// 	log.Fatalf("Errore nell'apertura del file di log: %v", err)
+	// }
 
-	// Reindirizza i log al file
-	log.SetOutput(logFile)
-	log.SetFlags(log.Ldate | log.Ltime | log.Lshortfile) // Formato log con data, ora e file sorgente
+	// // Reindirizza i log al file
+	// log.SetOutput(logFile)
+	// log.SetFlags(log.Ldate | log.Ltime | log.Lshortfile) // Formato log con data, ora e file sorgente
 
 	// load thresholds
-	err = loadThresholdsConfig(thresholdsConfigPath)
+	err := loadThresholdsConfig(thresholdsConfigPath)
 	if err != nil {
 		log.Printf("Error loading thresholds: %v\n", err)
 	}
