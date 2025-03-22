@@ -91,8 +91,10 @@ func Init(stopChan chan struct{}, cloudNodeUrl string) {
 		log.Printf("Node master has not a Cloud node as neighbour\n")
 	}
 	// Expose metrics
-	http.HandleFunc("/metrics", getMetricsHandler)
-	log.Fatal(http.ListenAndServe(":3113", nil))
+	go func() {
+		http.HandleFunc("/metrics", getMetricsHandler)
+		log.Fatal(http.ListenAndServe(":3113", nil))
+	}()
 
 	notifyCloud(cloudNodeUrl)
 
