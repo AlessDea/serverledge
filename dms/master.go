@@ -43,6 +43,7 @@ type result struct {
 // maps the nodes with their metrics
 // var NodesMetricsMap = make(map[Node][]Metric)
 var NodesMetricsMap = make(map[Node]json.RawMessage)
+var NodesMetricsMap2 = make(map[string]json.RawMessage)
 
 // LeaderInfo
 type MasterInfo struct {
@@ -81,8 +82,13 @@ func getMetricsHandler(w http.ResponseWriter, r *http.Request) {
 	mu.Lock()
 	defer mu.Unlock()
 
+	for n, m := range NodesMetricsMap {
+		nodeKey := fmt.Sprintf("%s-%s", n.Name, n.IP) // Chiave univoca per il nodo
+		NodesMetricsMap2[nodeKey] = m
+	}
+
 	w.Header().Set("Content-Type", "application/json")
-	if err := json.NewEncoder(w).Encode(NodesMetricsMap); err != nil {
+	if err := json.NewEncoder(w).Encode(NodesMetricsMap2); err != nil {
 		http.Error(w, "Error serializing metrics in JSON", http.StatusInternalServerError)
 	}
 }
