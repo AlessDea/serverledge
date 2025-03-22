@@ -1,6 +1,7 @@
 package dms
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -40,8 +41,60 @@ type result struct {
 // maps the nodes with their metrics
 var NodesMetricsMap = make(map[Node][]Metric)
 
+// LeaderInfo
+type MasterInfo struct {
+	IPAddress string `json:"ip_address"`
+	Timestamp int64  `json:"timestamp"`
+}
+
+var (
+	masterIP = "192.168.1.50:3113" // IP del nodo edge master
+	isMaster = false
+	mutx     sync.Mutex
+)
+
+func notifyCloud(url string) {
+	mu.Lock()
+	defer mu.Unlock()
+
+	data := LeaderInfo{
+		IPAddress: masterIP,
+		Timestamp: time.Now().Unix(),
+	}
+
+	payload, _ := json.Marshal(data)
+	resp, err := http.Post(url, "application/json", bytes.NewBuffer(payload))
+	if err != nil {
+		log.Println("Error notifying election to the Cloud node:", err)
+		return
+	}
+	defer resp.Body.Close()
+
+	log.Println("Successfully notified election to the Cloud node:", masterIP)
+}
+
+// Metrics Exposer
+func getMetricsHandler(w http.ResponseWriter, r *http.Request) {
+	mu.Lock()
+	defer mu.Unlock()
+
+	w.Header().Set("Content-Type", "application/json")
+	if err := json.NewEncoder(w).Encode(NodesMetricsMap); err != nil {
+		http.Error(w, "Error serializing metrics in JSON", http.StatusInternalServerError)
+	}
+}
+
 // TODO: check for updates of the nodes
-func Init(stopChan chan struct{}) {
+func Init(stopChan chan struct{}, cloudNodeUrl string) {
+
+	if cloudNodeUrl == "" {
+		log.Printf("Node master has not a Cloud node as neighbour\n")
+	}
+	// Expose metrics
+	http.HandleFunc("/metrics", getMetricsHandler)
+	log.Fatal(http.ListenAndServe(":3113", nil))
+
+	notifyCloud(cloudNodeUrl)
 
 retry:
 	log.Println("DMS: waiting to read registry")
@@ -61,7 +114,6 @@ retry:
 				continue // we get metrics only from edge nodes
 			} else {
 				node = Node{key, parsedURL.Hostname(), "edge"}
-
 			}
 
 			NodesMetricsMap[node] = []Metric{}
@@ -112,7 +164,7 @@ func retriever(stopChan chan struct{}) {
 func retrieveMetrics(n Node, ch chan result) {
 	var metrics []Metric
 
-	log.Println("DMS: Retrieving metrics")
+	log.Printf("DMS: Retrieving metrics from node %s\n", n.Name)
 
 	// make HTTP request to PROTO + n.IP + PORT + ROUTE
 	url := PROTO + n.IP + PORT + ROUTE

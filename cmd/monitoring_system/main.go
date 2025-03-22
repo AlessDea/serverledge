@@ -22,6 +22,8 @@ import (
 var ImTheLeader bool
 var Reg *registration.Registry
 
+var CloudNodeUrl string
+
 func main() {
 	configFileName := ""
 	if len(os.Args) > 1 {
@@ -102,7 +104,8 @@ func main() {
 		mtx.Lock()
 		go func() {
 			for {
-				cNodeName, cDist := getCloudNodeDistance(node.NodeIdentifier)
+				cNodeName, cDist, cloudNodeUrl := getCloudNodeDistance(node.NodeIdentifier)
+				CloudNodeUrl = cloudNodeUrl
 				bully.ThisNodeRWMtx.Lock()
 				thisNodeInfo.CloudDist = cDist
 				bully.ThisNodeRWMtx.Unlock()
@@ -162,7 +165,7 @@ func main() {
 				// this node is the master
 				ImTheLeader = true
 				log.Println("This node is the leader:", leader)
-				go dms.Init(stopChan)
+				go dms.Init(stopChan, CloudNodeUrl)
 			}
 			log.Println("BULLY END")
 		}()
@@ -188,7 +191,7 @@ func main() {
 						// still the leader: do nothing
 					} else {
 						ImTheLeader = true
-						go dms.Init(stopChan)
+						go dms.Init(stopChan, CloudNodeUrl)
 					}
 				} else {
 					log.Println("New leader:", leader)
@@ -230,17 +233,18 @@ func changePort(rawURL string, newPort string) (string, error) {
 	return parsedURL.String(), nil
 }
 
-func getCloudNodeDistance(s string) (string, time.Duration) {
+func getCloudNodeDistance(s string) (string, time.Duration, string) {
 	Reg.RwMtx.Lock()
 	defer Reg.RwMtx.Unlock()
 
 	// check if there is a cloud node in the Area of this node
 	if len(Reg.NearbyServersMap) <= 0 {
-		return "", -1
+		return "", -1, ""
 	}
 
 	var max time.Duration = 0.0
 	var maxNodeID string = ""
+	var maxUrl string = ""
 	for key, value := range Reg.NearbyServersMap {
 
 		log.Println("Server:", key)
@@ -259,8 +263,8 @@ func getCloudNodeDistance(s string) (string, time.Duration) {
 	}
 
 	if maxNodeID != "" {
-		return maxNodeID, max
+		return maxNodeID, max, maxUrl
 	}
-	return "", -1
+	return "", -1, ""
 
 }

@@ -35,7 +35,6 @@ func execute_policy() {
 	log.Println("Executing policy")
 	switch state {
 	case MsFullPerf:
-		// run all
 		log.Println("Node in Full Performance State")
 		perform_on_exporter(ProcessExporter, config.FullPerformance.ProcessExporter)
 		perform_on_exporter(NodeExporter, config.FullPerformance.NodeExporter)
@@ -43,7 +42,6 @@ func execute_policy() {
 		perform_on_exporter(Prometheus, config.FullPerformance.Prometheus)
 
 	case MsPartialPerf:
-		// for now stop Process and Otel
 		log.Println("Node in Partial Performance State")
 		perform_on_exporter(ProcessExporter, config.PartialPerformance.ProcessExporter)
 		perform_on_exporter(CAdvisor, config.PartialPerformance.CAdvisor)
@@ -51,7 +49,6 @@ func execute_policy() {
 		perform_on_exporter(Prometheus, config.PartialPerformance.Prometheus)
 
 	case MsDisabled:
-		// stop All
 		log.Println("Node in Disabled State")
 		perform_on_exporter(ProcessExporter, config.Disabled.ProcessExporter)
 		perform_on_exporter(NodeExporter, config.Disabled.NodeExporter)
@@ -59,7 +56,6 @@ func execute_policy() {
 		perform_on_exporter(Prometheus, config.Disabled.Prometheus)
 
 	case MsIdle:
-		// pause all
 		log.Println("Node in Idle State")
 		perform_on_exporter(ProcessExporter, config.Idle.ProcessExporter)
 		perform_on_exporter(NodeExporter, config.Idle.NodeExporter)
@@ -107,7 +103,7 @@ func check_change_state(nodeCPUUsage float64, nodeRAMUsage float64) {
 // }
 
 func checkNodeThreshold(nodeCPUUsage float64, nodeRAMUsage float64) {
-	log.Printf("nodeCPUUsage: %4.f | nodeRAMUsage: %4.f\n", nodeCPUUsage, nodeRAMUsage)
+	log.Printf("policy_executor::state::usage nodeCPUUsage: %4.f | nodeRAMUsage: %4.f\n", nodeCPUUsage, nodeRAMUsage)
 	if nodeCPUUsage > thresholds.Inactive.Node.CPU || nodeRAMUsage > thresholds.Inactive.Node.RAM {
 		nodeState = StateInactive
 		prevState = state

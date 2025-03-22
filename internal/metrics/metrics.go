@@ -81,14 +81,14 @@ func Init() {
 		for {
 			log.Println("COLLECTING")
 			metricsCollector()
-			time.Sleep(10 * time.Second)
+			time.Sleep(1 * time.Second)
 		}
 	}()
 
 	// Espone le metriche su /metrics per Prometheus
 	mux.Handle("/metrics", promhttp.Handler())
 
-	// Esponi le metriche in formato JSON (prometheus non supporta JSON)
+	// Esponi le metriche
 	mux.HandleFunc("/metrics/json", func(w http.ResponseWriter, r *http.Request) {
 		metricFamilies, err := prometheus.DefaultGatherer.Gather()
 		if err != nil {
