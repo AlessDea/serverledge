@@ -100,10 +100,11 @@ func main() {
 		// read the configuration: if this node has to be the leader then
 		if superBully {
 			// wait for the ms to receive the information needed
-			thisNodeInfo = <-msUpdate
 			thisNodeInfo.SuperBully = true
 
 		} else {
+			thisNodeInfo = <-msUpdate
+
 			thisNodeInfo.SuperBully = false
 		}
 
