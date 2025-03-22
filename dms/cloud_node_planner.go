@@ -77,7 +77,7 @@ func getMetricsFromMaster() {
 	metrics, _ := ioutil.ReadAll(resp.Body)
 	log.Println("Received Metrics:\n", string(metrics))
 
-	var metricsData map[string][]Metric
+	var metricsData map[string]json.RawMessage
 	if err := json.Unmarshal(metrics, &metricsData); err != nil {
 		log.Println("Errore nella deserializzazione JSON:", err)
 		return
@@ -86,12 +86,24 @@ func getMetricsFromMaster() {
 	mu.Lock()
 	defer mu.Unlock()
 
-	for nodeName, metrics := range metricsData {
+	for nodeName, rawMetrics := range metricsData {
 		metricsInfo := NodeMetrics{}
 		functionSet := make(map[string]struct{}) // Evita duplicati
 
+		// Decodifica il JSON grezzo in una lista di Metric
+		var metrics []Metric
+		if err := json.Unmarshal(rawMetrics, &metrics); err != nil {
+			log.Printf("❌ Errore nel parsing delle metriche per il nodo %s: %v\n", nodeName, err)
+			continue
+		}
+
+		// Itera sulle metriche decodificate
 		for _, metric := range metrics {
-			value, _ := strconv.ParseFloat(metric.Value, 64)
+			value, err := strconv.ParseFloat(metric.Value, 64)
+			if err != nil {
+				log.Printf("⚠️ Errore nella conversione del valore di %s per %s\n", metric.Name, nodeName)
+				continue
+			}
 
 			switch metric.Name {
 			case "node_cpu_seconds_total":
