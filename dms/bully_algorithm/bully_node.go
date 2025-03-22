@@ -143,7 +143,7 @@ func (node *BullyNode) Elect(update chan string) {
 		reply, _ := node.CommunicateWithPeer(peer.RPCClient, electionMessage)
 
 		if reply.IsAliveMessage() {
-			log.Printf("Peer %s is alive", peer.ID)
+			log.Printf("Peer %s is alive\n", peer.ID)
 			isHighestRankedBullyNodeAvailable = true
 			leaderID = peer.ID
 		}
@@ -218,9 +218,11 @@ func (node *BullyNode) IsRankedHigherThan(peer Peer) bool {
 	}
 	if thisNode.hasCloudNeighbour() && (thisNode.Status == "Normal" || thisNode.Status == "Degraded") {
 		// thisNode has the criteria to get elected
+		log.Printf("Node has neighbour cloud node: %d Status: %s -> Check Conditions\n", thisNode.hasCloudNeighbour(), thisNode.Status)
 		return thisNode.checkElectionConditions(node.ID, peer)
 	} else {
 		// thisNode has NOT the criteria to get elected
+		log.Printf("Node has neighbour cloud node: %d Status: %s -> Do Not Check Conditions\n", thisNode.hasCloudNeighbour(), thisNode.Status)
 		return false //thisNode.acceptOthersElection()
 	}
 }
