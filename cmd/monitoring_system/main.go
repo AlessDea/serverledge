@@ -30,8 +30,17 @@ func main() {
 		configFileName = os.Args[1]
 	}
 
-	config.ReadConfiguration(configFileName)
 	var wg sync.WaitGroup
+
+	config.ReadConfiguration(configFileName)
+	imCloud := config.GetBool(config.IS_IN_CLOUD, false)
+	if imCloud {
+		wg.Add(1)
+		go dms.InitCloudPlanner()
+		wg.Done()
+		os.Exit(0)
+	}
+
 	msUpdate := make(chan bully.NodeInfo)
 	bully.ElectionUpdate = make(chan string)
 	stopChan := make(chan struct{})

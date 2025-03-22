@@ -144,7 +144,7 @@ func printNodeMetrics() {
 	}
 }
 
-func main() {
+func InitCloudPlanner() {
 
 	http.HandleFunc("/update-leader", updateLeaderHandler)
 
