@@ -37,7 +37,7 @@ func main() {
 	if imCloud {
 		wg.Add(1)
 		go dms.InitCloudPlanner()
-		wg.Done()
+		wg.Wait()
 		os.Exit(0)
 	}
 
@@ -127,7 +127,7 @@ func main() {
 					log.Println("No Cloud servers in the area")
 				} else {
 					log.Println("Found Cloud servers in the area")
-					log.Printf("Nearest Cloud node:%s\n", cNodeName)
+					log.Printf("Nearest Cloud node:%s at %s\n", cNodeName, cloudNodeUrl)
 					if !startedFlag {
 						mtx.Unlock()
 					}
@@ -268,6 +268,9 @@ func getCloudNodeDistance(s string) (string, time.Duration, string) {
 		if Reg.Client.DistanceTo(&value.Coordinates) > max {
 			max = Reg.Client.DistanceTo(&value.Coordinates)
 			maxNodeID = key
+			parsedURL, _ := url.Parse(value.Url)
+			maxUrl = string(parsedURL.Hostname()) + ":" + strconv.Itoa(8080)
+
 		}
 	}
 

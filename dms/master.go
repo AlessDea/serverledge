@@ -48,7 +48,7 @@ type MasterInfo struct {
 }
 
 var (
-	masterIP = "192.168.1.50:3113" // IP del nodo edge master
+	masterIP = ":3113" // IP del nodo edge master
 	isMaster = false
 	mutx     sync.Mutex
 )
