@@ -15,6 +15,7 @@ import (
 
 	"github.com/grussorusso/serverledge/internal/config"
 	"github.com/grussorusso/serverledge/internal/registration"
+	"github.com/grussorusso/serverledge/utils"
 )
 
 var PROTO string = "http://"
@@ -33,13 +34,15 @@ type Metric struct {
 }
 
 type result struct {
-	valid   bool
-	node    Node
-	metrics []Metric
+	valid bool
+	node  Node
+	// metrics []Metric
+	metrics json.RawMessage
 }
 
 // maps the nodes with their metrics
-var NodesMetricsMap = make(map[Node][]Metric)
+// var NodesMetricsMap = make(map[Node][]Metric)
+var NodesMetricsMap = make(map[Node]json.RawMessage)
 
 // LeaderInfo
 type MasterInfo struct {
@@ -48,7 +51,7 @@ type MasterInfo struct {
 }
 
 var (
-	masterIP = ":3113" // IP del nodo edge master
+	masterIP = utils.GetIpAddress().String() + ":3113" // IP del nodo edge master
 	isMaster = false
 	mutx     sync.Mutex
 )
@@ -63,7 +66,7 @@ func notifyCloud(url string) {
 	}
 
 	payload, _ := json.Marshal(data)
-	resp, err := http.Post(url, "application/json", bytes.NewBuffer(payload))
+	resp, err := http.Post("http://"+url+"/update-leader", "application/json", bytes.NewBuffer(payload))
 	if err != nil {
 		log.Println("Error notifying election to the Cloud node:", err)
 		return
@@ -99,9 +102,9 @@ func Init(stopChan chan struct{}, cloudNodeUrl string) {
 	notifyCloud(cloudNodeUrl)
 
 retry:
-	log.Println("DMS: waiting to read registry")
+	// log.Println("DMS: waiting to read registry")
 	// create the NodesMetricMap
-	registration.Reg.RwMtx.Lock()
+	// registration.Reg.RwMtx.Lock()
 	if registration.Reg != nil && len(registration.Reg.NearbyServersMap) != 0 {
 		for key, value := range registration.Reg.NearbyServersMap {
 			parsedURL, err := url.Parse(value.Url)
@@ -118,11 +121,11 @@ retry:
 				node = Node{key, parsedURL.Hostname(), "edge"}
 			}
 
-			NodesMetricsMap[node] = []Metric{}
-			registration.Reg.RwMtx.Unlock()
+			NodesMetricsMap[node] = json.RawMessage{}
+			// registration.Reg.RwMtx.Unlock()
 		}
 	} else {
-		registration.Reg.RwMtx.Unlock()
+		// registration.Reg.RwMtx.Unlock()
 		time.Sleep(1 * time.Second)
 		goto retry
 	}
@@ -164,7 +167,7 @@ func retriever(stopChan chan struct{}) {
 }
 
 func retrieveMetrics(n Node, ch chan result) {
-	var metrics []Metric
+	// var metrics []Metric
 
 	log.Printf("DMS: Retrieving metrics from node %s\n", n.Name)
 
@@ -195,51 +198,61 @@ func retrieveMetrics(n Node, ch chan result) {
 		return
 	}
 
-	var jsonMetrics map[string]interface{}
-	if err := json.Unmarshal(body, &jsonMetrics); err != nil {
-		ch <- result{
-			valid:   false,
-			node:    n,
-			metrics: nil,
-		}
-		return
-	}
+	// Memorizza direttamente il JSON grezzo nella mappa
+	mu.Lock()
+	// NodesMetricsMap[n] = json.RawMessage(body)
+	metrics := json.RawMessage(body)
+	mu.Unlock()
 
-	// Iterate over the received metrics
-	for name, metricData := range jsonMetrics {
-		metricMap, ok := metricData.(map[string]interface{})
-		if !ok {
-			continue
-		}
+	log.Printf("✅ DMS: Stored raw metrics for node %s\n", n.Name)
 
-		// Estrai i valori delle metriche
-		if metricsArray, exists := metricMap["metric"]; exists {
-			for _, m := range metricsArray.([]interface{}) {
-				metricInstance := m.(map[string]interface{})
-				value := ""
-				if counter, hasCounter := metricInstance["counter"]; hasCounter {
-					value = fmt.Sprintf("%v", counter.(map[string]interface{})["value"])
-				} else if gauge, hasGauge := metricInstance["gauge"]; hasGauge {
-					value = fmt.Sprintf("%v", gauge.(map[string]interface{})["value"])
-				}
+	ch <- result{valid: true, node: n, metrics: metrics}
 
-				// Aggiungi la metrica alla lista
-				metrics = append(metrics, Metric{
-					Name:  name,
-					Value: value,
-				})
-			}
-		}
-	}
-
-	// log.Println("Metrics for node:", n.Name, n.IP)
-	// for _, m := range metrics {
-	// 	log.Println(m.Name)
+	// var jsonMetrics map[string]interface{}
+	// if err := json.Unmarshal(body, &jsonMetrics); err != nil {
+	// 	ch <- result{
+	// 		valid:   false,
+	// 		node:    n,
+	// 		metrics: nil,
+	// 	}
+	// 	return
 	// }
 
-	ch <- result{
-		valid:   true,
-		node:    n,
-		metrics: metrics,
-	}
+	// // Iterate over the received metrics
+	// for name, metricData := range jsonMetrics {
+	// 	metricMap, ok := metricData.(map[string]interface{})
+	// 	if !ok {
+	// 		continue
+	// 	}
+
+	// 	// Estrai i valori delle metriche
+	// 	if metricsArray, exists := metricMap["metric"]; exists {
+	// 		for _, m := range metricsArray.([]interface{}) {
+	// 			metricInstance := m.(map[string]interface{})
+	// 			value := ""
+	// 			if counter, hasCounter := metricInstance["counter"]; hasCounter {
+	// 				value = fmt.Sprintf("%v", counter.(map[string]interface{})["value"])
+	// 			} else if gauge, hasGauge := metricInstance["gauge"]; hasGauge {
+	// 				value = fmt.Sprintf("%v", gauge.(map[string]interface{})["value"])
+	// 			}
+
+	// 			// Aggiungi la metrica alla lista
+	// 			metrics = append(metrics, Metric{
+	// 				Name:  name,
+	// 				Value: value,
+	// 			})
+	// 		}
+	// 	}
+	// }
+
+	// // log.Println("Metrics for node:", n.Name, n.IP)
+	// // for _, m := range metrics {
+	// // 	log.Println(m.Name)
+	// // }
+
+	// ch <- result{
+	// 	valid:   true,
+	// 	node:    n,
+	// 	metrics: metrics,
+	// }
 }

@@ -66,7 +66,7 @@ func getMetricsFromMaster() {
 		return
 	}
 
-	url := fmt.Sprintf("http://%s:%s/metrics", master, metricsPort)
+	url := fmt.Sprintf("http://%s/metrics", master)
 	resp, err := http.Get(url)
 	if err != nil {
 		log.Println("Error retrieving metrics from the master:", err)
@@ -79,7 +79,7 @@ func getMetricsFromMaster() {
 
 	var metricsData map[string][]Metric
 	if err := json.Unmarshal(metrics, &metricsData); err != nil {
-		log.Println("❌ Errore nella deserializzazione JSON:", err)
+		log.Println("Errore nella deserializzazione JSON:", err)
 		return
 	}
 
