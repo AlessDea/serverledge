@@ -52,7 +52,6 @@ func NewBullyNode(nodeID string, hostport string) *BullyNode {
 	}
 
 	node.eventBus.Subscribe(event.LeaderElected, node.PingLeaderContinuously)
-	node.eventBus.Subscribe(event.ShareInfo, node.SendInfoContinuosly)
 	return node
 }
 
@@ -117,6 +116,15 @@ func (node *BullyNode) HandleMessage(args Message, reply *Message) error {
 	}
 
 	return nil
+}
+
+// send a PING info message every x seconds in broadcast
+func (node *BullyNode) SendInfoMessage() {
+	for {
+		infoMessage := Message{FromPeerID: node.ID, Type: PING, Info: node.Info}
+		node.BroadcastMessage(infoMessage)
+		time.Sleep(3 * time.Second)
+	}
 }
 
 func (node *BullyNode) Elect(update chan string) {
@@ -184,11 +192,6 @@ func (node *BullyNode) BroadcastMessage(args Message) {
 			peer.info = reply.Info
 		}
 	}
-}
-
-func (node *BullyNode) SendInfoContinuosly(_ string, payload any) {
-	pingInfoMessage := Message{FromPeerID: node.ID, Type: PING, Info: node.Info}
-	node.BroadcastMessage(pingInfoMessage)
 }
 
 func (node *BullyNode) PingLeaderContinuously(_ string, payload any) {

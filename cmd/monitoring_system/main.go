@@ -146,18 +146,15 @@ func main() {
 		bullyNode := bully.NewBullyNode(node.NodeIdentifier, utils.GetIpAddress().String()+":"+strconv.Itoa(config.GetInt(config.DMS_BULLY_PORT, 7878)))
 		bullyNode.Info = thisNodeInfo
 
-		// send a PING info message every x seconds in broadcast
-		go func() {
-			for {
-				infoMessage := bully.Message{FromPeerID: bullyNode.ID, Type: bully.PING, Info: bullyNode.Info}
-				bullyNode.BroadcastMessage(infoMessage)
-				time.Sleep(3 * time.Second)
-			}
-		}()
-
 		wg.Add(1)
 		var listener net.Listener
 		defer listener.Close()
+
+		rpcServer := rpc.NewServer()
+		rpcServer.Register(bullyNode)
+
+		go rpcServer.Accept(listener)
+
 		go func() {
 			log.Println("BULLY START")
 			defer wg.Done()
@@ -166,14 +163,11 @@ func main() {
 				log.Println(err)
 			}
 
-			rpcServer := rpc.NewServer()
-			rpcServer.Register(bullyNode)
-
-			go rpcServer.Accept(listener)
-
 			log.Println("BULLY CONNECTING TO PEERS")
 			bullyNode.ConnectToPeers()
 			log.Printf("%s is aware of own peers %s\n", bullyNode.ID, bullyNode.Peers.ToIDs())
+
+			go bullyNode.SendInfoMessage()
 
 			warmupTime := 5 * time.Second
 			time.Sleep(warmupTime)
@@ -188,6 +182,8 @@ func main() {
 			}
 			log.Println("BULLY END")
 		}()
+
+		go bullyNode.SendInfoMessage()
 
 		// wait for updates from monitoring system and election algorithm
 		for {
