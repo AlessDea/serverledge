@@ -114,7 +114,6 @@ func (node *BullyNode) HandleMessage(args Message, reply *Message) error {
 	case PING:
 		reply.Type = PONG
 		reply.info = node.Info
-		node.Peers.peerByID[args.FromPeerID].info = args.info
 	}
 
 	return nil

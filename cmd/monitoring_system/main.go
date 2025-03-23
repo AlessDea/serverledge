@@ -101,10 +101,8 @@ func main() {
 		if superBully {
 			// wait for the ms to receive the information needed
 			thisNodeInfo.SuperBully = true
-
 		} else {
 			thisNodeInfo = <-msUpdate
-
 			thisNodeInfo.SuperBully = false
 		}
 
