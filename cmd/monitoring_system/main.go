@@ -148,6 +148,10 @@ func main() {
 
 		wg.Add(1)
 		var listener net.Listener
+		listener, err = bullyNode.NewListener()
+		if err != nil {
+			log.Println(err)
+		}
 		defer listener.Close()
 
 		rpcServer := rpc.NewServer()
@@ -158,10 +162,6 @@ func main() {
 		go func() {
 			log.Println("BULLY START")
 			defer wg.Done()
-			listener, err = bullyNode.NewListener()
-			if err != nil {
-				log.Println(err)
-			}
 
 			log.Println("BULLY CONNECTING TO PEERS")
 			bullyNode.ConnectToPeers()
