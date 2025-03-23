@@ -71,6 +71,26 @@ func (node *BullyNode) ConnectToPeers() {
 		reply, _ := node.CommunicateWithPeer(rpcClient, pingMessage)
 
 		if reply.IsPongMessage() {
+			log.Printf("%s got pong message from %s - info: %s\n", node.ID, peerID, reply.Info.Status)
+			node.Peers.Add(peerID, rpcClient, reply.Info)
+		}
+	}
+}
+
+func (node *BullyNode) ConnectToNewPeers() {
+	for peerID, peerAddr := range nodeAddressByID {
+		if node.IsItself(peerID) {
+			continue
+		}
+		if _, exists := node.Peers.peerByID[peerID]; exists {
+			continue
+		}
+
+		rpcClient := node.connect(peerAddr)
+		pingMessage := Message{FromPeerID: node.ID, Type: PING, Info: node.Info}
+		reply, _ := node.CommunicateWithPeer(rpcClient, pingMessage)
+
+		if reply.IsPongMessage() {
 			log.Printf("%s got pong message from %s\n", node.ID, peerID)
 			node.Peers.Add(peerID, rpcClient, reply.Info)
 		}
@@ -112,7 +132,7 @@ func (node *BullyNode) HandleMessage(args Message, reply *Message) error {
 		reply.Type = OK
 	case PING:
 		reply.Type = PONG
-		// reply.info = node.Info
+		reply.Info = node.Info
 	}
 
 	return nil
@@ -154,6 +174,7 @@ func (node *BullyNode) Elect(update chan string) {
 			log.Printf("Peer %s is alive\n", peer.ID)
 			isHighestRankedBullyNodeAvailable = true
 			leaderID = peer.ID
+			peer.info = reply.Info
 		}
 	}
 

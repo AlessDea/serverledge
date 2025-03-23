@@ -132,7 +132,7 @@ func main() {
 						mtx.Unlock()
 					}
 				}
-				time.Sleep(30 * time.Second)
+				time.Sleep(10 * time.Second)
 			}
 		}()
 
@@ -183,6 +183,12 @@ func main() {
 			log.Println("BULLY END")
 		}()
 
+		go func() {
+			for {
+				bullyNode.ConnectToNewPeers()
+				time.Sleep(5 * time.Second)
+			}
+		}()
 		go bullyNode.SendInfoMessage()
 
 		// wait for updates from monitoring system and election algorithm
