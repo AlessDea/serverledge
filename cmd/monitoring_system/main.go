@@ -2,6 +2,7 @@ package main
 
 import (
 	"log"
+	"net"
 	"net/rpc"
 	"net/url"
 	"os"
@@ -145,15 +146,25 @@ func main() {
 		bullyNode := bully.NewBullyNode(node.NodeIdentifier, utils.GetIpAddress().String()+":"+strconv.Itoa(config.GetInt(config.DMS_BULLY_PORT, 7878)))
 		bullyNode.Info = thisNodeInfo
 
+		// send a PING info message every x seconds in broadcast
+		go func() {
+			for {
+				infoMessage := bully.Message{FromPeerID: bullyNode.ID, Type: bully.PING, Info: bullyNode.Info}
+				bullyNode.BroadcastMessage(infoMessage)
+				time.Sleep(3 * time.Second)
+			}
+		}()
+
 		wg.Add(1)
+		var listener net.Listener
+		defer listener.Close()
 		go func() {
 			log.Println("BULLY START")
 			defer wg.Done()
-			listener, err := bullyNode.NewListener()
+			listener, err = bullyNode.NewListener()
 			if err != nil {
 				log.Println(err)
 			}
-			defer listener.Close()
 
 			rpcServer := rpc.NewServer()
 			rpcServer.Register(bullyNode)

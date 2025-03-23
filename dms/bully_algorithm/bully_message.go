@@ -2,7 +2,7 @@ package bully
 
 type Message struct {
 	FromPeerID string
-	info       NodeInfo // sent only with PONG type message
+	Info       NodeInfo // sent only with PONG type message
 	Type       MessageType
 }
 

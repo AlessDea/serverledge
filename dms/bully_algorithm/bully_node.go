@@ -52,7 +52,7 @@ func NewBullyNode(nodeID string, hostport string) *BullyNode {
 	}
 
 	node.eventBus.Subscribe(event.LeaderElected, node.PingLeaderContinuously)
-
+	node.eventBus.Subscribe(event.ShareInfo, node.SendInfoContinuosly)
 	return node
 }
 
@@ -68,12 +68,12 @@ func (node *BullyNode) ConnectToPeers() {
 		}
 
 		rpcClient := node.connect(peerAddr)
-		pingMessage := Message{FromPeerID: node.ID, Type: PING, info: node.Info}
+		pingMessage := Message{FromPeerID: node.ID, Type: PING, Info: node.Info}
 		reply, _ := node.CommunicateWithPeer(rpcClient, pingMessage)
 
 		if reply.IsPongMessage() {
 			log.Printf("%s got pong message from %s\n", node.ID, peerID)
-			node.Peers.Add(peerID, rpcClient, reply.info)
+			node.Peers.Add(peerID, rpcClient, reply.Info)
 		}
 	}
 }
@@ -113,7 +113,7 @@ func (node *BullyNode) HandleMessage(args Message, reply *Message) error {
 		reply.Type = OK
 	case PING:
 		reply.Type = PONG
-		reply.info = node.Info
+		// reply.info = node.Info
 	}
 
 	return nil
@@ -138,7 +138,7 @@ func (node *BullyNode) Elect(update chan string) {
 		}
 
 		log.Printf("%s send ELECTION message to peer %s\n", node.ID, peer.ID)
-		electionMessage := Message{FromPeerID: node.ID, Type: ELECTION, info: node.Info}
+		electionMessage := Message{FromPeerID: node.ID, Type: ELECTION, Info: node.Info}
 
 		reply, _ := node.CommunicateWithPeer(peer.RPCClient, electionMessage)
 
@@ -175,8 +175,20 @@ func (node *BullyNode) BroadcastMessage(args Message) {
 	peers := node.Peers.ToList()
 	for i := range peers {
 		peer := peers[i]
-		node.CommunicateWithPeer(peer.RPCClient, args)
+		reply, err := node.CommunicateWithPeer(peer.RPCClient, args)
+		if err != nil {
+			log.Printf("Error bradcasting Message\n")
+			return
+		}
+		if reply.IsPongMessage() {
+			peer.info = reply.Info
+		}
 	}
+}
+
+func (node *BullyNode) SendInfoContinuosly(_ string, payload any) {
+	pingInfoMessage := Message{FromPeerID: node.ID, Type: PING, Info: node.Info}
+	node.BroadcastMessage(pingInfoMessage)
 }
 
 func (node *BullyNode) PingLeaderContinuously(_ string, payload any) {
@@ -189,7 +201,7 @@ ping:
 		return
 	}
 
-	pingMessage := Message{FromPeerID: node.ID, Type: PING}
+	pingMessage := Message{FromPeerID: node.ID, Type: PING, Info: node.Info}
 	reply, err := node.CommunicateWithPeer(leader.RPCClient, pingMessage)
 	if err != nil {
 		log.Printf("Leader is down, new election about to start!\n")
@@ -201,6 +213,7 @@ ping:
 	if reply.IsPongMessage() {
 		log.Printf("Leader %s sent PONG message\n", reply.FromPeerID)
 		time.Sleep(3 * time.Second)
+		leader.info = reply.Info
 		goto ping
 	}
 }
