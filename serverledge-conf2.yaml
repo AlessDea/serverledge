@@ -1,7 +1,7 @@
 container.pool.memory: 4096
 etcd.address: "192.168.122.31:2379"
 scheduler.queue.capacity: 0
-metrics.enabled: false
+metrics.enabled: true
 container.expiration: 10
 registry.udp.port: 9998
 api.port: 1233
