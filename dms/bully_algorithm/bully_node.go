@@ -98,15 +98,10 @@ func (node *BullyNode) ConnectToNewPeers() {
 }
 
 func (node *BullyNode) connect(peerAddr string) *rpc.Client {
-	c := 0
 retry:
 	client, err := rpc.Dial("tcp", peerAddr)
 	if err != nil {
 		log.Printf("Error dialing rpc dial %s: %s\n", peerAddr, err.Error())
-		c++
-		if c > 10 {
-			return nil
-		}
 		time.Sleep(50 * time.Millisecond)
 		goto retry
 	}
