@@ -3,18 +3,22 @@ Idle:
   process-exporter: pause
   cadvisor: pause
   prometheus: pause
+  scrapingInterval: 40
 Disabled:
   node-exporter: run
   process-exporter: stop
   cadvisor: stop
   prometheus: stop
+  scrapingInterval: 30
 PartialPerformance:
   node-exporter: run
   process-exporter: run
   cadvisor: pause
   prometheus: run
+  scrapingInterval: 10
 FullPerformance:
   node-exporter: run
   process-exporter: run
   cadvisor: run
   prometheus: run
+  scrapingInterval: 2

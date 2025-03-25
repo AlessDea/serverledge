@@ -21,6 +21,9 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
+var ScrapingInterval int64
+var timerMu sync.RWMutex
+
 func readMetricsConfig(filePath string) (map[string]float64, error) {
 	content, err := os.ReadFile(filePath)
 	if err != nil {
@@ -253,33 +256,34 @@ func analyzer(uc chan bully.NodeInfo) {
 		}
 
 		// Calculate CPU and RAM usage for a specific process: serverledge
-		// processCPUUsage, err := calculateProcessCPU(url)
-		// if err != nil {
-		// 	log.Printf("Error calculating process CPU usage: %v", err)
-		// } else {
-		// 	log.Printf("Process CPU Usage: %.2f%%\n", processCPUUsage)
-		// }
+		msCPUUsage, err := calculateProcessCPU(url)
+		if err != nil {
+			log.Printf("Error calculating process CPU usage: %v", err)
+		} else {
+			log.Printf("Process CPU Usage: %.2f%%\n", msCPUUsage)
+		}
 
-		// processRAMUsage, err := calculateProcessRAM(url)
-		// if err != nil {
-		// 	log.Printf("Error calculating process RAM usage: %v", err)
-		// } else {
-		// 	log.Printf("Process RAM Usage: %.2f%%\n", processRAMUsage)
-		// }
+		msRAMUsage, err := calculateProcessRAM(url)
+		if err != nil {
+			log.Printf("Error calculating process RAM usage: %v", err)
+		} else {
+			log.Printf("Process RAM Usage: %.2f%%\n", msRAMUsage)
+		}
 
-		check_change_state(nodeCPUUsage, nodeRAMUsage)
+		check_change_state(nodeCPUUsage, nodeRAMUsage, msCPUUsage, msRAMUsage)
 
 		if uc != nil {
 			uc <- bully.NodeInfo{Status: string(nodeState), AvailableRsrc: (nodeCPUUsage*0.4 + nodeRAMUsage*0.6)}
 		}
 		// Wait before next iteration
-		log.Printf("Waiting")
-		time.Sleep(11 * time.Second)
+		timerMu.RLock()
+		time.Sleep(time.Duration(ScrapingInterval))
+		timerMu.RUnlock()
 	}
 }
 
 func Init(wg *sync.WaitGroup, uc chan bully.NodeInfo) {
-	defer wg.Done() // Segnala che la goroutine ha finito
+	defer wg.Done()
 
 	// Apri/crea il file di log
 	logFile, err := os.OpenFile("serverledge_ms.log", os.O_CREATE|os.O_WRONLY, 0644)
@@ -296,16 +300,22 @@ func Init(wg *sync.WaitGroup, uc chan bully.NodeInfo) {
 	if err != nil {
 		log.Printf("Error loading thresholds: %v\n", err)
 	}
-	log.Println("loaded thresholds\n")
+	log.Println("Loaded thresholds configuration\n")
 
 	// load change state policy actions
 	err = loadActionsConfig(policyConfigPath)
 	if err != nil {
 		log.Printf("Error loading thresholds: %v\n", err)
 	}
-	log.Println("loaded thresholds\n")
+	log.Println("Loaded Policy Actions\n")
 
 	printStructures(config, thresholds)
+
+	if config.FullPerformance.ScrapeInterval != 0 {
+		ScrapingInterval = config.FullPerformance.ScrapeInterval * int64(time.Second)
+	} else {
+		ScrapingInterval = 10 * int64(time.Second) // seconds
+	}
 
 	// start in a Full Performance state
 	log.Println("Node in Normal state, run exporters:")
@@ -313,9 +323,6 @@ func Init(wg *sync.WaitGroup, uc chan bully.NodeInfo) {
 	_ = startExporter(ProcessExporter)
 	_ = startExporter(Prometheus)
 	_ = startExporter(CAdvisor)
-	//_ = startExporter(OtelCollector)
-	// implement communication with other server nodes
 
-	// run go routin for continuose metrics analyses in order to take decision
 	analyzer(uc)
 }

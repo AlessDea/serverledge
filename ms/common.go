@@ -8,6 +8,8 @@ var stopScriptPath string = "./ms/exporters_controller/start_exporter.sh"
 var pauseScriptPath string = "./ms/exporters_controller/pause_exporter.sh"
 var unpauseScriptPath string = "./ms/exporters_controller/unpause_exporter.sh"
 
+var restartScriptPath string = "./ms/exporters_controller/restart_exporter.sh"
+
 var thresholdsConfigPath string = "./ms/thresholds_config.yml"
 var policyConfigPath string = "./ms/policy_config.yml"
 
@@ -112,6 +114,7 @@ type Actions struct {
 	OtelCollector   CommandType `yaml:"otel-collector"`
 	Prometheus      CommandType `yaml:"prometheus"`
 	CAdvisor        CommandType `yaml:"cadvisor"`
+	ScrapeInterval  int64       `yaml:"scrapingInterval"`
 }
 
 var exportersState = make(map[string]ExporterState)

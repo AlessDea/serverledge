@@ -160,10 +160,8 @@ func main() {
 		go rpcServer.Accept(listener)
 
 		go func() {
-			log.Println("BULLY START")
 			defer wg.Done()
 
-			log.Println("BULLY CONNECTING TO PEERS")
 			bullyNode.ConnectToPeers()
 			log.Printf("%s is aware of own peers %s\n", bullyNode.ID, bullyNode.Peers.ToIDs())
 
@@ -180,7 +178,6 @@ func main() {
 				log.Println("This node is the leader:", leader)
 				go dms.Init(stopChan, CloudNodeUrl)
 			}
-			log.Println("BULLY END")
 		}()
 
 		go func() {
@@ -201,7 +198,10 @@ func main() {
 				}
 				if !superBully {
 					log.Println("received:", update)
-					thisNodeInfo = update
+					if update.Status != thisNodeInfo.Status {
+						thisNodeInfo = update
+						bullyNode.Elect(bully.ElectionUpdate)
+					}
 				}
 				break
 			case leader := <-bully.ElectionUpdate:
@@ -226,8 +226,7 @@ func main() {
 				}
 				break
 			default:
-				log.Println("No updates from MS")
-				time.Sleep(3 * time.Second) // wait 3s
+				time.Sleep(time.Duration(ms.ScrapingInterval)) // wait 3s
 				break
 			}
 		}

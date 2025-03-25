@@ -173,7 +173,7 @@ func (node *BullyNode) Elect(update chan string) {
 		if reply.IsAliveMessage() {
 			log.Printf("Peer %s is alive\n", peer.ID)
 			isHighestRankedBullyNodeAvailable = true
-			leaderID = peer.ID
+			// leaderID = peer.ID
 			peer.info = reply.Info
 		}
 	}
@@ -281,7 +281,7 @@ func (i NodeInfo) checkElectionConditions(thisID string, other Peer) bool {
 	}
 
 	// Secondary comparison: same status and cloudDist
-	if thisNode.Status == otherNode.Status && thisNode.CloudDist == otherNode.CloudDist {
+	if thisNode.Status == otherNode.Status && thisNode.CloudDist <= otherNode.CloudDist {
 		if thisNode.AvailableRsrc > otherNode.AvailableRsrc {
 			return true
 		} else if thisNode.AvailableRsrc == otherNode.AvailableRsrc && thisID > other.ID {

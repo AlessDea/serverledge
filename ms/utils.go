@@ -66,27 +66,33 @@ func setDefaultConfig(config *Config) {
 		OtelCollector:   "pause",
 		Prometheus:      "pause",
 	}
+	config.Idle.ScrapeInterval = 30
+
 	config.Disabled = Actions{
 		NodeExporter:    "stop",
 		ProcessExporter: "stop",
 		OtelCollector:   "stop",
 		Prometheus:      "stop",
 	}
+	config.Disabled.ScrapeInterval = 50
+
 	config.PartialPerformance = Actions{
 		NodeExporter:    "run",
 		ProcessExporter: "pause",
 		OtelCollector:   "pause",
 		Prometheus:      "run",
 	}
+	config.PartialPerformance.ScrapeInterval = 10
+
 	config.FullPerformance = Actions{
 		NodeExporter:    "run",
 		ProcessExporter: "run",
 		OtelCollector:   "run",
 		Prometheus:      "run",
 	}
+	config.FullPerformance.ScrapeInterval = 4
 }
 
-// TODO: check if the percentages are increasing, if not return error
 func loadThresholdsConfig(filename string) error {
 	// Open the YAML file
 	ex, err := os.Executable()
